@@ -1,4 +1,4 @@
-# genHashID
+# genHashID.py
 - It is used to generate a secret key for each user.
 - It generates a file contains student ID and the secret key.
 - The function returns its hash value
