@@ -1,3 +1,10 @@
+# Instruction
+1. Run genHashID.py to generate hashList.txt.
+   type in student ID to obtain secret key
+   type E to finish 
+3. Run voting.py to vote.
+   the tatol ballot is limited to 3 now, just for easier testing.
+
 ## genHashID.py
 It is ued to register voters. Once everyone is registered, it generates a file contains all hashed value of every voter.
  #### gen_voterHash(ID, genFile = True)
