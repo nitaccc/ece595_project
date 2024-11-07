@@ -49,5 +49,6 @@ It contains functions to use in DRE machine.
  - a non-interactive proof of knowledge of (a secret) $s_1$ such that (for publicly-known $g_1$ and $s_1$): $n_1$ = $g_1$ ^ $s_1$
  #### genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei, Wi, q)
  - a proof of well-formedness of $E_i$ with respect to $g_1, g_2, c, d, h, U_i, V_i, W_i$
+ - a non-interactive proof of knowledge of (a secret) $r_i$
  #### printReceipt(receipt)
  - Generate a receipt file for verifying. 
