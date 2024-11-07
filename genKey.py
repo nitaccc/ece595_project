@@ -1,4 +1,7 @@
-from sympy import isprime, primitive_root
+# Generate public keys to use in DRE machine
+# They can be used in verification phase
+
+from sympy import isprime
 from random import randint
 
 
@@ -13,18 +16,15 @@ def find_generator(p):
 
 
 def key_generation():
-    # 1. Find Z*p
+    # 1. Find a cyclic group Z*p
     #       find a prime p and q such that p = q*k + 1
     q = 99377
     k = 1
     while not isprime(q * k + 1):
         k = k + 1
     p = q*k+1
-    # print("p = ", p)
-    # print("q = ", q)
-    # print("k = ", k)
 
-    # 2. Find Gq
+    # 2. Find the generator Gq
     #       find g that is relatively prime to p, and be a generator of the Z*p
     #       geneator criteria:
     #           since p-1 = 298131 * 10, so pow(g, 298131, p) != 1 and pow(g, 10, p) != 1
@@ -34,7 +34,6 @@ def key_generation():
         print("Gq passed.")
     else:
         print("Gq failed.")
-    # print("gq = ", gq)
 
     # 3. Find g1 and g2 from Gq
     #       a, b should be relatively prime to q
@@ -49,11 +48,10 @@ def key_generation():
 
     g1 = pow(gq, a, p)
     g2 = pow(gq, b, p)
-    # print("g1 = ", g1)
-    # print("g2 = ", g2)
 
     # generate c, d, h
-    private_list = []
+    # private_list = [x1, x2, y1, y2, z]
+    private_list = [] 
     for i in range(5):
         private_list.append(randint(1, q-1))
 
@@ -63,5 +61,12 @@ def key_generation():
 
     return c, d, h, gq, q, g1, g2
 
+
+
 if __name__ == '__main__':
     c, d, h, gq, q, g1, g2 = key_generation()
+    print("(c, d, h): ", c, d, h)
+    print("Gq = ", gq)
+    print("q = ", q)
+    print("g1 = ", g1)
+    print("g2 = ", g2)

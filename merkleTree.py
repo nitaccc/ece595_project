@@ -1,18 +1,16 @@
-import secrets
-import string
-import secrets
-import hashlib
-from genHashID import gen_voterHash
-from class_merkleTree import MerkleTree, Node
-
-
-
 # Construct Merkle Tree
 #       since it requires 2^n leaf nodes and we have 21 students
 #       the minimum nodes will be 32
 #       assume we have a list with 32 hashed value
 #       (leave it and replace it with real ID, so it will be 21 real hash + 11 random hash
 #       consider it later
+
+import secrets
+import string
+import secrets
+import hashlib
+from genHashID import gen_voterHash
+from class_merkleTree import MerkleTree, Node
 
 
 

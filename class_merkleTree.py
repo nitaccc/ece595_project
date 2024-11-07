@@ -1,6 +1,8 @@
 # Python code for implemementing Merkle Tree
+
 from typing import List, Tuple
 import hashlib
+
 
 
 class Node:
@@ -23,6 +25,7 @@ class Node:
         class copy function
         """
         return Node(self.left, self.right, self.value, self.content, True)
+
 
 
 class MerkleTree:
