@@ -28,6 +28,11 @@ It is modified from https://www.geeksforgeeks.org/introduction-to-merkle-tree/
 
 ## genKey.py
 It is used to generate public keys for the DRE machine. 
+ #### key_generation_modify()
+ - use El Gamal Encryption Scheme
+ - I have not tried this one on voting.py yet.
+ - Might change to this function when completing verify phase. 
+
 
 ## voting.py
 1. It creates a Merkle Tree from the file **hashList.txt** generated from **genHashID.py**.
@@ -51,4 +56,7 @@ It contains functions to use in DRE machine.
  - a proof of well-formedness of $E_i$ with respect to $g_1, g_2, c, d, h, U_i, V_i, W_i$
  - a non-interactive proof of knowledge of (a secret) $r_i$
  #### printReceipt(receipt)
- - Generate a receipt file for verifying. 
+ - Generate a receipt file for verifying.
+
+## verify.py
+It contains a function used to read a receipt file. 
