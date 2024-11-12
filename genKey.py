@@ -63,6 +63,30 @@ def key_generation():
 
 
 
+def key_generation_modify():
+    # Find a cyclic group Zq
+    q = randint(10000, 100000)
+    while not isprime(q):
+        q = randint(10000, 100000)
+    # Find two generators g1, g2
+    g1 = find_generator(q)
+    g2 = find_generator(q)
+    while g2 == g1:
+        g2 = find_generator(q)
+    # Chooses five random values (x1, x2, y1, y2, z) from 0~q-1
+    private_list = [] 
+    for i in range(5):
+        private_list.append(randint(1, q-1))
+    # Compute c, d, h
+    c = g1^private_list[0] * g2^private_list[1]
+    d = g1^private_list[2] * g2^private_list[3]
+    h = g1^private_list[4]
+    # (c, d, h) is published along with the description of Gq, q, g1, g2 as its public key
+    return c, d, h, q, g1, g2
+
+
+
+
 if __name__ == '__main__':
     c, d, h, gq, q, g1, g2 = key_generation()
     print("(c, d, h): ", c, d, h)
