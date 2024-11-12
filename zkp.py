@@ -78,12 +78,12 @@ def DRE_receipt(i, c, d, h, gq, q, g1, g2, s1, n1, t, m, s, n):
         decision = input("Confirm (y/n): ")
         # audit receipt: (i : (Ui, Vi, Ei, Wi, Pwf{Ei}, PK{s1}), (audited, ri, vi)
         # confirm receipt: (i : (Ui, Vi, Ei, Wi, PWF{Ei}, PK{s1}), (confirmed, PK{s})
-        if decision == "y":
+        if decision == "n":
             receipt["status"] = "audit"
             receipt["ballot"] = vi
             receipt["ri"] = ri
             break
-        elif decision == "n":
+        elif decision == "y":
             receipt["status"] = "confirm"
             t = t + vi
             m = m + ri * alpha
@@ -116,15 +116,23 @@ def printReceipt(receipt):
         "\n  U = ", str(receipt["Pwf"]["U"]),
         "\n  V = ", str(receipt["Pwf"]["V"]),
         "\n  E = ", str(receipt["Pwf"]["E"]),
-        "\n  W = ", str(receipt["Pwf"]["W"]),
+        "\n  W = ", str(receipt["Pwf"]["W"])
     ])
     f.write(tmp)
-    f.write("\nPK_s1(t, r): " + str(receipt["Pk_s1"]))
+    tmp = "".join([
+        "\nPk_s1: ",
+        "\n  t = ", str(receipt["Pk_s1"][0]),
+        "\n  r = ", str(receipt["Pk_s1"][1])
+    ])
+    f.write(tmp)
 
     if receipt["status"] == "confirm":
-        f.write("\nPK_s(t, r): " + str(receipt["Pk_s"]))
-    else:
-        f.write("\n\nThis ballot did not count")
+        tmp = "".join([
+            "\nPk_s: ",
+            "\n  t = ", str(receipt["Pk_s"][0]),
+            "\n  r = ", str(receipt["Pk_s"][1])
+        ])
+        f.write(tmp)
 
     f.close()
     return filename
