@@ -6,7 +6,7 @@ from genHashID import gen_voterHash
 from merkleTree import construct_MerkleTree, verify_hash
 from genKey import key_generation
 from zkp import printReceipt, DRE_receipt
-
+from blockChain import *
 
 def register(mtree):
     while True:
@@ -44,6 +44,7 @@ if __name__ == '__main__':
     audit = []
     confirm = []
     count = 0
+    blockchain = Blockchain()
 
     # Voting
     while True: 
@@ -60,6 +61,8 @@ if __name__ == '__main__':
             # audit
             audit.append(count)
             # creates a block to mine it in the block-chain
+            blockchain.add_block(receipt, s1, n1, g1, q, n, s)
+            print(f"Blockchain is valid: {blockchain.is_chain_valid()}")
             # send the transaction to the BB
             # TODO
         else:
@@ -71,6 +74,8 @@ if __name__ == '__main__':
             hash_list[idx] = gen_voterHash(studentID, False)
             mtree = construct_MerkleTree(hash_list)
             # creates a block to mine it in the block-chain
+            blockchain.add_block(receipt, s1, n1, g1, q, n, s)
+            print(f"Blockchain is valid: {blockchain.is_chain_valid()}")
             # send the transaction to the BB
             # TODO
 
