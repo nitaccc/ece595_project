@@ -34,7 +34,7 @@ if __name__ == '__main__':
     mtree = construct_MerkleTree(hash_list)
 
     # Initialize
-    c, d, h, gq, q, g1, g2 = key_generation()
+    c, d, h, q, g1, g2 = key_generation()
     t = 0
     m = 0
     s = 0
@@ -52,7 +52,7 @@ if __name__ == '__main__':
         hashValue = register(mtree)
         count += 1
         
-        t, m, s, s1, n, n1, receipt = DRE_receipt(count, c, d, h, gq, q, g1, g2, s1, n1, t, m, s, n)
+        t, m, s, s1, n, n1, receipt = DRE_receipt(count, c, d, h, q, g1, g2, s1, n1, t, m, s, n)
         tmp = printReceipt(receipt)
         print(tmp, "is generated. \n")
 
@@ -78,7 +78,6 @@ if __name__ == '__main__':
     # Tally
     print("\nTally")
     print("(c, d, h): ", c, d, h)
-    print("Gq = ", gq)
     print("q = ", q)
     print("g1 = ", g1)
     print("g2 = ", g2)
