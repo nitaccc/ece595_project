@@ -8,7 +8,7 @@ import hashlib
 
 def genProof_s1(n1, g1, s1, q):
     v = randint(1, q-1)
-    t = g1^v
+    t = pow(g1, v, q)
     tmp = str(g1) + str(n1) + str(t)
     c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
     c = int(c, 16)
@@ -19,29 +19,33 @@ def genProof_s1(n1, g1, s1, q):
 
 
 def genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei, Wi, q):
+    tmp = str(Ui) + str(Vi) + str(Ei)
+    alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+    alpha = int(alpha, 16)
+
     r1 = randint(1, q-1)
-    t1_U = g1^r1
-    t1_V = g2^r1
-    t1_E = (h^r1)
-    tmp = str(t1_U) + str(t1_V) + str(t1_E)
-    t1_alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-    t1_alpha = int(t1_alpha, 16)
-    t1_W = (c^r1) * (d^(r1*t1_alpha))
+    t1_U = pow(g1, r1, q)
+    t1_V = pow(g2, r1, q)
+    t1_E = pow(h, r1, q)
+    # tmp = str(t1_U) + str(t1_V) + str(t1_E)
+    # t1_alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+    # t1_alpha = int(t1_alpha, 16)
+    t1_W = pow(c, r1, q) * pow(d, (r1*alpha), q) % q
 
     r2 = randint(1, q-1)
-    t2_U = g1^r2
-    t2_V = g2^r2
-    t2_E = (h^r2) * g1
-    tmp = str(t2_U) + str(t2_V) + str(t2_E)
-    t2_alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-    t2_alpha = int(t2_alpha, 16)
-    t2_W = (c^r2) * (d^(r2*t2_alpha))
+    t2_U = pow(g1, r2, q)
+    t2_V = pow(g2, r2, q)
+    t2_E = pow(h, r2, q)# * g1 % q
+    # tmp = str(t2_U) + str(t2_V) + str(t2_E)
+    # t2_alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+    # t2_alpha = int(t2_alpha, 16)
+    t2_W = pow(c, r2, q) * pow(d, (r2*alpha), q) % q
 
     tmp = str(g1) + str(g2) + str(c) + str(d) + str(h) + str(Ui) + str(Vi) + str(Ei) + str(Wi) + str(t1_U) + str(t1_V) + str(t1_E) + str(t1_W) + str(t2_U) + str(t2_V) + str(t2_E) + str(t2_W)
-    c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-    c = int(c, 16)
-    v1 = (r1 - c*ri) % (q-1)
-    v2 = (r2 - c*ri) % (q-1)
+    c_hash = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+    c_hash = int(c_hash, 16)
+    v1 = (r1 - c_hash*ri) % (q-1)
+    v2 = (r2 - c_hash*ri) % (q-1)
 
     proof = {"r": [v1, v2],
              "U": [t1_U, t2_U], 
@@ -49,21 +53,26 @@ def genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei, Wi, q):
              "E": [t1_E, t2_E], 
              "W": [t1_W, t2_W]}
     
+    print("c", c)
+    print("r1", r1)
+    print("r2", r2)
+
+    
     return proof
 
 
 
-def DRE_receipt(i, c, d, h, gq, q, g1, g2, s1, n1, t, m, s, n):
+def DRE_receipt(i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
     vi = input("Type 0 or 1: ")
     vi = int(vi)
     ri = randint(1, q-1)
-    Ui = g1^ri
-    Vi = g2^ri
-    Ei = (h^ri) * (g1^vi)
+    Ui = pow(g1, ri, q)
+    Vi = pow(g2, ri, q)
+    Ei = pow(h, ri, q) * pow(g1, vi, q)
     tmp = str(Ui) + str(Vi) + str(Ei)
     alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
     alpha = int(alpha, 16)
-    Wi = (c^ri) * (d^(ri*alpha))
+    Wi = pow(c, ri, q) * pow(d, (ri*alpha), q) % q
 
     Pwf = genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei, Wi, q)
     s1 = s1 + ri
@@ -133,6 +142,9 @@ def printReceipt(receipt):
             "\n  r = ", str(receipt["Pk_s"][1])
         ])
         f.write(tmp)
+    else:
+        f.write("\nBallot: " + str(receipt["ballot"]))
+        f.write("\nri: " + str(receipt["ri"]))
 
     f.close()
     return filename
