@@ -61,7 +61,6 @@ if __name__ == '__main__':
 
         if receipt["status"] != "confirm":
             # audit
-            print("audited ballot")
             audit.append(count)
             # creates a block and mines it in the block-chain
             block_success = blockchain.add_block(receipt, tmp, n1, g1, q, n, s, c)
@@ -100,13 +99,18 @@ if __name__ == '__main__':
     Vi_tally = 1
     Wi_tally = 1
     Ui_tally = 1
+    n1_tally = 1
 
     for block in blockchain.chain:
+        
+
         if block.receipt == "Genesis Block":
             continue
         
         block_receipt = block.receipt
         block_receipt_file = block.file
+
+        n1_tally = n1_tally * block_receipt["Ui"] % q
 
         # Public verifies PWF
         if not verifyPWF(block_receipt_file):
@@ -115,7 +119,7 @@ if __name__ == '__main__':
 
         # Public verifies vi and ri for audited ballots
         if block_receipt["status"] != "confirm":
-            if not auditVerify(block_receipt_file, n1): # TODO how do we get n1
+            if not auditVerify(block_receipt_file, n1_tally): # TODO how do we get n1
                 print("There has been an error in an audited ballot. Insecure!")
                 exit()
         else:
@@ -137,4 +141,3 @@ if __name__ == '__main__':
         print("There has been an error in the vote tallying of Wi's. Insecure!")
     else:
         print("All tally verifications have passed! Course evaluation complete and secure!")
-
