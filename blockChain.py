@@ -43,21 +43,27 @@ class Blockchain:
             return False
         # Pk s1
         # TODO (my method did not work)
-        # if not verifySingleProof(receipt["Pk_s1"][1], receipt["Pk_s1"][0], g1, n1, c, q):
-        #     print("Pks1 failed in blockchain.")
-        #     return False
+        tmp = str(g1) + str(n1) + str(receipt["Pk_s1"][0])
+        hash_c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+        hash_c = int(hash_c, 16)
+        if not verifySingleProof(receipt["Pk_s1"][1], receipt["Pk_s1"][0], g1, n1, hash_c, q):
+            print("Pks1 failed in blockchain.")
+            return False
 
         if receipt["status"] != "confirm":
             # verify ri and vi for audited ballot
             if not auditVerify(filename, n1):
                 print("Audit verification failed in blockchain.")
                 return False
-        # else: 
+        else: 
             # verify Pks for confirmed ballot
             # TODO (this does not work)
-            # if (receipt["Pk_s"] != genProof_s1(n, g1, s, q)): # is this ok?
-            #     print("Pks failed in blockchain.")
-            #     return False
+            tmp = str(g1) + str(n) + str(receipt["Pk_s"][0])
+            hash_c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+            hash_c = int(hash_c, 16)
+            if not verifySingleProof(receipt["Pk_s"][1], receipt["Pk_s"][0], g1, n, hash_c, q):
+                print("Pks failed in blockchain.")
+                return False
 
         previous_block = self.chain[-1]
         new_block = Block(len(self.chain), previous_block.hash, receipt, filename)
