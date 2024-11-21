@@ -52,12 +52,7 @@ def genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei, Wi, q):
              "V": [t1_V, t2_V], 
              "E": [t1_E, t2_E], 
              "W": [t1_W, t2_W]}
-    
-    print("c", c)
-    print("r1", r1)
-    print("r2", r2)
 
-    
     return proof
 
 
@@ -76,7 +71,7 @@ def DRE_receipt(i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
 
     Pwf = genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei, Wi, q)
     s1 = s1 + ri
-    n1 = n1 * Ui
+    n1 = n1 * Ui % q
     Pk_s1 = genProof_s1(n1, g1, s1, q)
 
     # first half of the receipt
@@ -97,7 +92,7 @@ def DRE_receipt(i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
             t = t + vi
             m = m + ri * alpha
             s = s + ri
-            n = n * Ui
+            n = n * Ui % q
             Pk_s = genProof_s1(n, g1, s, q)
             receipt["Pk_s"] = Pk_s
             break
