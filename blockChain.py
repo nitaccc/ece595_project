@@ -1,19 +1,20 @@
 import hashlib
 import time
-from zkp import genProof_Ei, genProof_s1
-from verify import readReceipt
+from verify import verifyPWF, verifySingleProof, auditVerify, readReceipt
+from zkp import genProof_s1
 
 class Block:
-    def __init__(self, index, previous_hash, receipt, timestamp=None):
+    def __init__(self, index, previous_hash, receipt, filename, timestamp=None):
         self.index = index
         self.timestamp = timestamp or time.time()
         self.receipt = receipt
+        self.file = filename
         self.previous_hash = previous_hash
         self.nonce = 0  # for mining
         self.hash = self.compute_hash()
 
     def compute_hash(self):
-        block_string = f"{self.index}{self.timestamp}{self.receipts}{self.previous_hash}{self.nonce}"
+        block_string = f"{self.index}{self.timestamp}{self.receipt}{self.previous_hash}{self.nonce}"
         return hashlib.sha256(block_string.encode()).hexdigest()
 
     
@@ -31,35 +32,42 @@ class Blockchain:
         self.create_genesis_block()
 
     def create_genesis_block(self):
-        genesis_block = Block(0, "0", "Genesis Block")
+        genesis_block = Block(0, "0", "Genesis Block", "no_file")
         self.chain.append(genesis_block)
 
-    def add_block(self, receipt, s1, n1, g1, q, n, s):
+    def add_block(self, receipt, filename, n1, g1, q, n, s, c):
         # verify all the zero knowledge proofs in a receipt
         # Pwf EI
-        if (receipt["Pwf"]["E"] != genProof_Ei(receipt["Ei"])):
-            return
+        if not verifyPWF(filename):
+            print("PWF failed in blockchain.")
+            return False
         # Pk s1
-        if (receipt["Pk_s1"] != genProof_s1(n1, g1, s1, q)):
-            return
+        # TODO (my method did not work)
+        # if not verifySingleProof(receipt["Pk_s1"][1], receipt["Pk_s1"][0], g1, n1, c, q):
+        #     print("Pks1 failed in blockchain.")
+        #     return False
 
-        if "ballot" in receipt:
+        if receipt["status"] != "confirm":
             # verify ri and vi for audited ballot
-            # TODO
-            pass
-        else: 
+            if not auditVerify(filename, n1):
+                print("Audit verification failed in blockchain.")
+                return False
+        # else: 
             # verify Pks for confirmed ballot
-            if (receipt["Pk_s"] != genProof_s1(n, g1, s, q)):
-                return
+            # TODO (this does not work)
+            # if (receipt["Pk_s"] != genProof_s1(n, g1, s, q)): # is this ok?
+            #     print("Pks failed in blockchain.")
+            #     return False
 
         previous_block = self.chain[-1]
-        new_block = Block(len(self.chain), previous_block.hash, receipt)
+        new_block = Block(len(self.chain), previous_block.hash, receipt, filename)
         
         # Mine the block
         new_block.mine_block(self.difficulty)
         
         # Add the mined block to the chain
         self.chain.append(new_block)
+        return True
 
     def is_chain_valid(self):
         # Validates the blockchain to ensure integrity.
@@ -79,9 +87,11 @@ class Blockchain:
     
 
 if __name__ == '__main__':
-    receipt = readReceipt("Receipt1.txt")
-    print(receipt)
+    # receipt = readReceipt("Receipt1.txt")
+    # print(receipt)
     
     blockchain = Blockchain()
     #blockchain.add_block(receipt, s1, n1, g1, q, n, s)
     #print(f"Blockchain is valid: {blockchain.is_chain_valid()}")
+
+# This code was modified from the blockchain how-to on Geeks for Geeks: https://www.geeksforgeeks.org/create-simple-blockchain-using-python/
