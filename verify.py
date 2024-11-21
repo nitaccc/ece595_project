@@ -148,8 +148,11 @@ def auditVerify(filename, n1):
     if not verifyPWF(filename):
         return False
     
-    # verify pk_s1, but how to obtain n1?
-    if not verifySingleProof(receipt["Pk_s1"][1], receipt["Pk_s1"][0], g1, n1, c, q):
+    # obtain hash c
+    tmp = str(g1) + str(n1) + str(receipt["Pk_s1"][0])
+    hash_c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+    hash_c = int(hash_c, 16)    
+    if not verifySingleProof(receipt["Pk_s1"][1], receipt["Pk_s1"][0], g1, n1, hash_c, q):
         return False
     
     return True
@@ -166,5 +169,5 @@ if __name__ == '__main__':
     print(verifyPWF("Receipt2.txt"))
     print(verifyPWF("Receipt3.txt"))
 
-    # print(auditVerify("Receipt1.txt"))
-    # print(auditVerify("Receipt2.txt"))
+    print(auditVerify("Receipt1.txt"))
+    print(auditVerify("Receipt2.txt"))
