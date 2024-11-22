@@ -4,6 +4,8 @@
 
 from random import randint
 import hashlib
+import socket
+import pickle
 
 
 def genProof_s1(n1, g1, s1, q):
@@ -57,9 +59,13 @@ def genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei, Wi, q):
 
 
 
-def DRE_receipt(i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
-    vi = input("Type 0 or 1: ")
-    vi = int(vi)
+def DRE_receipt(connection, i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
+    # vi = input("Type 0 or 1: ")
+    while True:
+        tmp = connection.recv(512)
+        if len(tmp) > 0:
+            break
+    vi = int(tmp.decode())
     ri = randint(1, q-1)
     Ui = pow(g1, ri, q)
     Vi = pow(g2, ri, q)
@@ -76,10 +82,16 @@ def DRE_receipt(i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
 
     # first half of the receipt
     receipt = {"id": i, "Ui": Ui, "Vi": Vi, "Ei": Ei, "Wi": Wi, "Pwf": Pwf, "Pk_s1": Pk_s1}
+    connection.send(pickle.dumps(receipt))
 
     # check their decision
     while True:
-        decision = input("Confirm (y/n): ")
+        # decision = input("Confirm (y/n): ")
+        while True:
+            tmp = connection.recv(512)
+            if len(tmp) > 0:
+                break
+        decision = tmp.decode()
         # audit receipt: (i : (Ui, Vi, Ei, Wi, Pwf{Ei}, PK{s1}), (audited, ri, vi)
         # confirm receipt: (i : (Ui, Vi, Ei, Wi, PWF{Ei}, PK{s1}), (confirmed, PK{s})
         if decision == "n":
@@ -96,13 +108,17 @@ def DRE_receipt(i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
             Pk_s = genProof_s1(n, g1, s, q)
             receipt["Pk_s"] = Pk_s
             break
-
+    
+    connection.send(pickle.dumps(receipt))
     return t, m, s, s1, n, n1, receipt
 
 
 
-def printReceipt(receipt):
-    filename = "Receipt" + str(receipt["id"]) + ".txt"
+def printReceipt(receipt, opt = False):
+    if opt: 
+        filename = "VoterReceipt" + str(receipt["id"]) + ".txt"
+    else:
+        filename = "Receipt" + str(receipt["id"]) + ".txt"
     f = open(filename, "w")
     if receipt["status"] == "confirm":
         f.write("This ballot is counted.")
