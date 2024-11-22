@@ -37,6 +37,20 @@ def verify_hash(mtree, verify_value):
         return False
 
 
+# def register(mtree):
+#     while True:
+#         studentID = input("Please enter 10 digits student ID: ")
+#         if len(studentID) == 10:
+#             secretKey = input("Please enter the secret key: ")
+#             ID32 = bytes(studentID + secretKey, 'utf-8')
+#             test = hashlib.sha256(ID32).hexdigest()
+#             if verify_hash(mtree, test):
+#                 print("Passed.")
+#                 return test
+#             else:
+#                 print(test)
+#                 print("Failed.")
+
 
 if __name__ == '__main__':
     studentID_hashList = []
