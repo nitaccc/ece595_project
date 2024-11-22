@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
         # Public verifies vi and ri for audited ballots
         if block_receipt["status"] != "confirm":
-            if not auditVerify(block_receipt_file, n1_tally): # TODO how do we get n1
+            if not auditVerify(block_receipt_file, n1_tally):
                 print("There has been an error in an audited ballot. Insecure!")
                 exit()
         else:

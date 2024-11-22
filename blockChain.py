@@ -42,7 +42,6 @@ class Blockchain:
             print("PWF failed in blockchain.")
             return False
         # Pk s1
-        # TODO (my method did not work)
         tmp = str(g1) + str(n1) + str(receipt["Pk_s1"][0])
         hash_c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
         hash_c = int(hash_c, 16)
@@ -57,7 +56,6 @@ class Blockchain:
                 return False
         else: 
             # verify Pks for confirmed ballot
-            # TODO (this does not work)
             tmp = str(g1) + str(n) + str(receipt["Pk_s"][0])
             hash_c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
             hash_c = int(hash_c, 16)
