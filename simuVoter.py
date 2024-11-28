@@ -52,8 +52,8 @@ if __name__ == '__main__':
 
         # send choice, then receive the first part of the receipt
         while True:
-            vi = input("Please enter 0 or 1: ")
-            if vi == '0' or vi == '1':
+            vi = input("Please rank 1-5: ")
+            if vi == '1' or vi == '2' or vi == '3' or vi == '4' or vi == '5':
                 break
         clientsocket.send(vi.encode(encoding='utf-8'))
         while True:

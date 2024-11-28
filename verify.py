@@ -7,38 +7,76 @@ def readReceipt(filename):
     id = int(lines[1][11:-1])
     Ui = int(lines[2][4:-1])
     Vi = int(lines[3][4:-1])
-    Ei = int(lines[4][4:-1])
-    Wi = int(lines[5][4:-1])
 
-    idx = lines[7].find(',')
-    r = [int(lines[7][7:idx]), int(lines[7][idx+1:-2])]
-    idx = lines[8].find(',')
-    U = [int(lines[8][7:idx]), int(lines[8][idx+1:-2])]
-    idx = lines[9].find(',')
-    V = [int(lines[9][7:idx]), int(lines[9][idx+1:-2])]
-    idx = lines[10].find(',')
-    E = [int(lines[10][7:idx]), int(lines[10][idx+1:-2])]
-    idx = lines[11].find(',')
-    W = [int(lines[11][7:idx]), int(lines[11][idx+1:-2])]
-    Pwf = {"r": r, "U": U, "V": V, "E": E, "W": W}
-    t = int(lines[13][5:-1])
-    r = int(lines[14][5:-1])
+    Ei = []
+    ei_start_idx = 5
+    while lines[ei_start_idx].startswith("["):  # Check if line starts with a matrix row
+        Ei.append(eval(lines[ei_start_idx][1:-2]))  # Convert the string representation of the list to a list
+        ei_start_idx += 1
+
+    Wi = int(lines[ei_start_idx][4:-1])
+
+    Pwf = []
+    row_idx = ei_start_idx + 1
+    while row_idx < len(lines) and lines[row_idx].startswith("PWF_Ei Row"):
+        current_row = []  # Temporary storage for proofs in the current row
+        
+        # Process proofs in the current row
+        proof_idx = row_idx + 1
+        while proof_idx < len(lines) and lines[proof_idx].startswith("  Proof for element"):
+            proof = {}
+
+            # Extract values for r, U, V, E, W
+            proof["r"] = [int(x) for x in lines[proof_idx + 1].split("=")[1].strip(" []\n").split(",")]
+            proof["U"] = [int(x) for x in lines[proof_idx + 2].split("=")[1].strip(" []\n").split(",")]
+            proof["V"] = [int(x) for x in lines[proof_idx + 3].split("=")[1].strip(" []\n").split(",")]
+            proof["E"] = [int(x) for x in lines[proof_idx + 4].split("=")[1].strip(" []\n").split(",")]
+            proof["W"] = [int(x) for x in lines[proof_idx + 5].split("=")[1].strip(" []\n").split(",")]
+            
+            current_row.append(proof)
+            proof_idx += 6  # Move to the next proof element
+
+        Pwf.append(current_row)  # Append the completed row to Pwf
+        row_idx = proof_idx  # Move to the next row
+
+    idx = row_idx + 1
+    t = int(lines[idx][5:-1])
+    r = int(lines[idx + 1][5:-1])
     Pk_s1 = (t, r)
-    
-    if len(lines) > 17:
-        t = int(lines[16][5:-1])
-        r = int(lines[17][5:])
+
+    if len(lines) > idx + 4:  # confirmed ballots
+        t = int(lines[idx + 3][5:-1])
+        r = int(lines[idx + 4][5:])
         Pk_s = (t, r)
-        receipt = {"status": "confirm", "id": id, "Ui": Ui, "Vi": Vi, "Ei": Ei, "Wi": Wi, "Pwf": Pwf, "Pk_s1": Pk_s1, "Pk_s": Pk_s}
-        receipt["Pk_s"] = Pk_s
-    else:
-        ballot = int(lines[15][-2])
-        ri = int(lines[16][4:])
-        receipt = {"status": "audit", "id": id, "Ui": Ui, "Vi": Vi, "Ei": Ei, "Wi": Wi, "Pwf": Pwf, "Pk_s1": Pk_s1, "ballot": ballot, "ri": ri}
+        receipt = {
+            "status": "confirm",
+            "id": id,
+            "Ui": Ui,
+            "Vi": Vi,
+            "Ei": Ei,
+            "Wi": Wi,
+            "Pwf": Pwf,
+            "Pk_s1": Pk_s1,
+            "Pk_s": Pk_s
+        }
+    else:  # audited ballots
+        matrix_string = lines[idx+2].split("Ballot:")[1].strip()
+        ballot = eval(matrix_string)
+        ri = int(lines[idx + 3][4:])
+        receipt = {
+            "status": "audit",
+            "id": id,
+            "Ui": Ui,
+            "Vi": Vi,
+            "Ei": Ei,
+            "Wi": Wi,
+            "Pwf": Pwf,
+            "Pk_s1": Pk_s1,
+            "ballot": ballot,
+            "ri": ri
+        }
 
     return receipt
-
-
 
 def readPublicKey():
     f = open("publicKey.txt", "r")
@@ -82,6 +120,7 @@ def multiplicativeInverse(aa, bb):
 def verifySingleProof(v1, tu1, g1, u, c, q):
     check_t = pow(g1, v1, q) * pow(u, c, q)
     check_t = check_t % q
+    print(f"left: {check_t}, t (right): {tu1}")
     if check_t == tu1:
         return True
     else:
@@ -93,30 +132,51 @@ def verifyPWF(filename):
     receipt = readReceipt(filename)
     c, d, h, q, g1, g2 = readPublicKey()
 
-    tr = receipt["Pwf"]["r"]
-    tU = receipt["Pwf"]["U"]
-    tV = receipt["Pwf"]["V"]
-    tE = receipt["Pwf"]["E"]
-    tW = receipt["Pwf"]["W"]
+    for row_idx, row in enumerate(receipt["Ei"]):
+        for col_idx, element in enumerate(row):
+            # retrieve the proof for the current element
+            proof = receipt["Pwf"][row_idx][col_idx]
+            tr = proof["r"]
+            tU = proof["U"]
+            tV = proof["V"]
+            tE = proof["E"]
+            tW = proof["W"]
 
-    tmp = str(g1) + str(g2) + str(c) + str(d) + str(h) + str(receipt["Ui"]) + str(receipt["Vi"]) + str(receipt["Ei"]) + str(receipt["Wi"]) + str(tU[0]) + str(tV[0]) + str(tE[0]) + str(tW[0]) + str(tU[1]) + str(tV[1]) + str(tE[1]) + str(tW[1])
-    c_hash = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-    c_hash = int(c_hash, 16)
+            tmp = (
+                str(g1) + str(g2) + str(c) + str(d) + str(h) +
+                str(receipt["Ui"]) + str(receipt["Vi"]) + 
+                str(element) + str(receipt["Wi"]) +
+                str(tU[0]) + str(tV[0]) + str(tE[0]) + str(tW[0]) +
+                str(tU[1]) + str(tV[1]) + str(tE[1]) + str(tW[1])
+            )
+            c_hash = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+            c_hash = int(c_hash, 16)
 
-    tmp = str(receipt["Ui"]) + str(receipt["Vi"]) + str(receipt["Ei"])
-    alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-    alpha = int(alpha, 16)
+            tmp = str(receipt["Ui"]) + str(receipt["Vi"]) + str(element)
+            alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+            alpha = int(alpha, 16)
 
-    if verifySingleProof(tr[0], tU[0], g1, receipt["Ui"], c_hash, q) and verifySingleProof(tr[0], tV[0], g2, receipt["Vi"], c_hash, q):
-        if verifySingleProof(tr[0], tE[0], h, receipt["Ei"], c_hash, q) and verifySingleProof(tr[0], tW[0], (c * pow(d, alpha, q) % q), receipt["Wi"], c_hash, q):
-            return True
-    
-    if verifySingleProof(tr[1], tU[1], g1, receipt["Ui"], c_hash, q) and verifySingleProof(tr[1], tV[1], g2, receipt["Vi"], c_hash, q):
-        tmp = multiplicativeInverse(q, g1)
-        if verifySingleProof(tr[1], tE[1], h, receipt["Ei"]*tmp%q, c_hash, q) and verifySingleProof(tr[1], tW[1], (c * pow(d, alpha, q) % q), receipt["Wi"], c_hash, q):
-            return True
-        
-    return False
+            valid_first_r = (
+                verifySingleProof(tr[0], tU[0], g1, receipt["Ui"], c_hash, q) and
+                verifySingleProof(tr[0], tV[0], g2, receipt["Vi"], c_hash, q) and
+                verifySingleProof(tr[0], tE[0], h, element, c_hash, q) and
+                verifySingleProof(tr[0], tW[0], (c * pow(d, alpha, q) % q), receipt["Wi"], c_hash, q)
+            )
+            print("valid first r: " + str(valid_first_r))
+
+            valid_second_r = (
+                verifySingleProof(tr[1], tU[1], g1, receipt["Ui"], c_hash, q) and
+                verifySingleProof(tr[1], tV[1], g2, receipt["Vi"], c_hash, q) and
+                verifySingleProof(tr[1], tE[1], h, element, c_hash, q) and
+                verifySingleProof(tr[1], tW[1], (c * pow(d, alpha, q) % q), receipt["Wi"], c_hash, q)
+            )
+            print("valid first r: " + str(valid_second_r))
+
+            # if neither proof passes, the verification fails
+            if not (valid_first_r or valid_second_r):
+                return False
+
+    return True
 
 
 

@@ -11,7 +11,7 @@ from zkp import printReceipt, DRE_receipt
 from verify import verifyPWF, auditVerify
 from blockChain import Blockchain
 
-
+NUM_CANDIDATES = 5
 
 if __name__ == '__main__':
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -35,7 +35,7 @@ if __name__ == '__main__':
         
     # Initialize
     c, d, h, q, g1, g2 = key_generation()
-    t = 0
+    t = [[0 for _ in range(NUM_CANDIDATES)] for _ in range(NUM_CANDIDATES)]
     m = 0
     s = 0
     s1 = 0
@@ -103,12 +103,14 @@ if __name__ == '__main__':
     print("g1 = ", g1)
     print("g2 = ", g2)
     # These are posted to the public
-    print("t = ", t)
+    print("Tallies : ")
+    for i in range(NUM_CANDIDATES):
+        print("Votes for " + str(i + 1) + ": "+ str(t[i][i]))
     print("s = ", s)
     print("m = ", m)
     
     # Verify tally w/ blockchain
-    Ei_tally = 1
+    Ei_tally = None
     Vi_tally = 1
     Wi_tally = 1
     Ui_tally = 1
@@ -132,14 +134,22 @@ if __name__ == '__main__':
 
         # Public verifies vi and ri for audited ballots
         if block_receipt["status"] != "confirm":
-            if not auditVerify(block_receipt_file, n1_tally): # TODO how do we get n1
+            if not auditVerify(block_receipt_file, n1_tally): 
                 print("There has been an error in an audited ballot. Insecure!")
                 exit()
         else:
             Ui_tally = (Ui_tally * block_receipt["Ui"]) % q
-            Ei_tally = (Ei_tally * block_receipt["Ei"]) % q
             Vi_tally = (Vi_tally * block_receipt["Vi"]) % q
             Wi_tally = (Wi_tally * block_receipt["Wi"]) % q
+            Ei_matrix = block_receipt["Ei"]
+            if Ei_tally is None:
+                # Initialize Ei_tally as the first matrix
+                Ei_tally = [[element for element in row] for row in Ei_matrix]
+            else:
+                # multiply matrices element-wise modulo q
+                for i in range(len(Ei_matrix)):
+                    for j in range(len(Ei_matrix[i])):
+                        Ei_tally[i][j] = (Ei_tally[i][j] * Ei_matrix[i][j]) % q
     
     # Public verifies the tally equations
     if (Ui_tally != pow(g1, s, q)):
@@ -148,9 +158,15 @@ if __name__ == '__main__':
         print(str(pow(g1, s, q)))
     elif (Vi_tally != pow(g2, s, q)):
         print("There has been an error in the vote talling of Vi's. Insecure!")
-    elif (Ei_tally != (pow(h, s, q) * pow(g1, t, q)) % q):
-        print("There has been an error in the vote tallying of Ei's. Insecure!")
     elif (Wi_tally != (pow(c, s, q) * pow(d, m, q)) % q):
         print("There has been an error in the vote tallying of Wi's. Insecure!")
+    expected_Ei_tally = [
+        [pow(h, s, q) * pow(g1, t, q) % q for _ in range(len(Ei_tally[0]))]
+        for _ in range(len(Ei_tally))
+    ]
+    for i in range(len(Ei_tally)):
+        for j in range(len(Ei_tally[i])):
+            if Ei_tally[i][j] != expected_Ei_tally[i][j]:
+                print(f"There has been an error in the vote tallying of Ei[{i}][{j}]. Insecure!")
     else:
         print("All tally verifications have passed! Course evaluation complete and secure!")

@@ -9,6 +9,7 @@ from zkp import printReceipt, DRE_receipt
 from verify import verifyPWF, auditVerify
 from blockChain import Blockchain
 
+NUM_CANDIDATES = 5
 
 def register(mtree):
     while True:
@@ -37,7 +38,7 @@ if __name__ == '__main__':
 
     # Initialize
     c, d, h, q, g1, g2 = key_generation()
-    t = 0
+    t = [[0 for _ in range(NUM_CANDIDATES)] for _ in range(NUM_CANDIDATES)]
     m = 0
     s = 0
     s1 = 0
