@@ -95,13 +95,13 @@ def calculate_Ei_matrix(vote_matrix, g1, q, h, ri):
     
     return Ei_matrix
 
-def DRE_receipt(i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
-    vi = input("Rank 1-5: ")
-    # while True:
-    #     tmp = connection.recv(512)
-    #     if len(tmp) > 0:
-    #         break
-    # vi = int(tmp.decode())
+def DRE_receipt(connection, i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
+    # vi = input("Rank 1-5: ")
+    while True:
+        tmp = connection.recv(1024)
+        if len(tmp) > 0:
+            break
+    vi = int(tmp.decode())
     vote_matrix = encode_vote(vi)
 
     ri = randint(1, q-1)
@@ -120,16 +120,16 @@ def DRE_receipt(i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
 
     # first half of the receipt
     receipt = {"id": i, "Ui": Ui, "Vi": Vi, "Ei": Ei, "Wi": Wi, "Pwf": Pwf, "Pk_s1": Pk_s1}
-    #connection.send(pickle.dumps(receipt))
+    connection.send(pickle.dumps(receipt))
 
     # check their decision
     while True:
-        decision = input("Confirm (y/n): ")
-        # while True:
-        #     tmp = connection.recv(512)
-        #     if len(tmp) > 0:
-        #         break
-        # decision = tmp.decode()
+        # decision = input("Confirm (y/n): ")
+        while True:
+            tmp = connection.recv(512)
+            if len(tmp) > 0:
+                break
+        decision = tmp.decode()
         # audit receipt: (i : (Ui, Vi, Ei, Wi, Pwf{Ei}, PK{s1}), (audited, ri, vi)
         # confirm receipt: (i : (Ui, Vi, Ei, Wi, PWF{Ei}, PK{s1}), (confirmed, PK{s})
         if decision == "n":
@@ -147,7 +147,7 @@ def DRE_receipt(i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
             receipt["Pk_s"] = Pk_s
             break
     
-    #connection.send(pickle.dumps(receipt))
+    connection.send(pickle.dumps(receipt))
     return t, m, s, s1, n, n1, receipt
 
 

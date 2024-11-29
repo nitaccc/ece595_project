@@ -57,7 +57,7 @@ if __name__ == '__main__':
                 break
         clientsocket.send(vi.encode(encoding='utf-8'))
         while True:
-            tmp = clientsocket.recv(512)
+            tmp = clientsocket.recv(4096)
             if len(tmp) > 0:
                 receipt = pickle.loads(tmp)
                 break
@@ -68,7 +68,7 @@ if __name__ == '__main__':
                 break
         clientsocket.send(decision.encode(encoding='utf-8'))
         while True:
-            tmp = clientsocket.recv(512)
+            tmp = clientsocket.recv(4096)
             if len(tmp) > 0:
                 receipt = pickle.loads(tmp)
                 break
