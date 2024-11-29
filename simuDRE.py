@@ -10,7 +10,7 @@ from verify import verifyPWF, auditVerify
 from blockChain import Blockchain
 from util import printReceipt
 
-
+NUM_CANDIDATES = 5
 
 if __name__ == '__main__':
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,7 +40,7 @@ if __name__ == '__main__':
             question_len = int(tmp.decode())
             break
     c, d, h, q, g1, g2 = key_generation(question_len)
-    t = [0 for _ in range(question_len)]
+    t = [[[0 for _ in range(NUM_CANDIDATES)] for _ in range(NUM_CANDIDATES)] for _ in range(question_len)]
     m = [0 for _ in range(question_len)]
     s = [0 for _ in range(question_len)]
     s1 = [0 for _ in range(question_len)]
@@ -104,13 +104,16 @@ if __name__ == '__main__':
     print("s:", s)
     print("m:", m, "\n")
     for i in range(2):
-        print("Question", i+1, ":", t[i]/question_len, "agree. ")
+      print("Question", i+1, ":")
+      for j in range(NUM_CANDIDATES):
+        print("Votes for " + str(j + 1) + ": "+ str(t[j][j]))
+      print("\n")
     publicKey = {"c": c, "d": d, "h": h, "q": q, "g1": g1, "g2": g2, "t": t, "s": s, "m": m}
     connection.send(pickle.dumps(publicKey))
 
 
     # Verify tally w/ blockchain
-    Ei_tally = [1 for _ in range(question_len)]
+    Ei_tally = [None for _ in range(question_len)]
     Vi_tally = [1 for _ in range(question_len)]
     Wi_tally = [1 for _ in range(question_len)]
     Ui_tally = [1 for _ in range(question_len)]
@@ -140,9 +143,17 @@ if __name__ == '__main__':
         else:
             for i in range(question_len):
                 Ui_tally[i] = (Ui_tally[i] * block_receipt["Ui"][i]) % q[i]
-                Ei_tally[i] = (Ei_tally[i] * block_receipt["Ei"][i]) % q[i]
+                Ei_matrix = block_receipt["Ei"][i]
                 Vi_tally[i] = (Vi_tally[i] * block_receipt["Vi"][i]) % q[i]
                 Wi_tally[i] = (Wi_tally[i] * block_receipt["Wi"][i]) % q[i]
+                if Ei_tally[i] is None:
+                    # Initialize Ei_tally as the first matrix
+                    Ei_tally[i] = [[element for element in row] for row in Ei_matrix]
+                else:
+                    # multiply matrices element-wise modulo q
+                    for k in range(len(Ei_matrix)):
+                        for j in range(len(Ei_matrix[k])):
+                            Ei_tally[i][k][j] = (Ei_tally[i][k][j] * Ei_matrix[k][j]) % q[i]
     
     # Public verifies the tally equations
     for i in range(question_len):
@@ -152,10 +163,16 @@ if __name__ == '__main__':
         elif (Vi_tally[i] != pow(g2[i], s[i], q[i])):
             print("There has been an error in the vote talling of Vi's. Insecure!")
             exit()
-        elif (Ei_tally[i] != (pow(h[i], s[i], q[i]) * pow(g1[i], t[i], q[i])) % q[i]):
-            print("There has been an error in the vote tallying of Ei's. Insecure!")
-            exit()
         elif (Wi_tally[i] != (pow(c[i], s[i], q[i]) * pow(d[i], m[i], q[i])) % q[i]):
             print("There has been an error in the vote tallying of Wi's. Insecure!")
             exit()
-    print("All tally verifications have passed! Course evaluation complete and secure!")
+        expected_Ei_tally = [
+            [pow(h[i], s[i], q[i]) * pow(g1[i], t[i], q[i]) % q[i] for _ in range(len(Ei_tally[i][0]))]
+            for _ in range(len(Ei_tally[i]))
+        ]
+        for k in range(len(Ei_tally[i])):
+            for j in range(len(Ei_tally[i][k])):
+                if Ei_tally[i][k][j] != expected_Ei_tally[i][k][j]:
+                  print(f"There has been an error in the vote tallying of Ei[{i}][{j}]. Insecure!")
+                  exit()
+    print("All tally verifications have passed! Cours

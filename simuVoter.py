@@ -48,7 +48,7 @@ if __name__ == '__main__':
         tmp = clientsocket.recv(512)
         if len(tmp) > 0:
             break
-    question_set = ["You learn a lot from this course. Agree(1) or Disagree(0): ", "You prefer take this course in person. Agree(1) or Disagree(0): "]
+    question_set = ["You learn a lot from this course. Strongly Agree(5) ~ Strongly Disagree(1): ", "You prefer take this course in person. Strongly Agree(5) ~ Strongly Disagree(1): "]
     clientsocket.send(str(len(question_set)).encode(encoding='utf-8'))
     receipt_name = []
 
@@ -75,11 +75,11 @@ if __name__ == '__main__':
         for question in question_set:
             while True:
                 vi = input(question)
-                if vi == '0' or vi == '1':
+                if vi == '1' or vi == '2' or vi == '3' or vi == '4' or vi == '5':
                     break
             clientsocket.send(vi.encode(encoding='utf-8'))
             while True:
-                tmp = clientsocket.recv(512)
+                tmp = clientsocket.recv(4096)
                 if len(tmp) > 0:
                     receipt = pickle.loads(tmp)
                     break
@@ -91,7 +91,7 @@ if __name__ == '__main__':
                 break
         clientsocket.send(decision.encode(encoding='utf-8'))
         while True:
-            tmp = clientsocket.recv(512)
+            tmp = clientsocket.recv(4096)
             if len(tmp) > 0:
                 receipt = pickle.loads(tmp)
                 merge_r['status'] = receipt[0]
