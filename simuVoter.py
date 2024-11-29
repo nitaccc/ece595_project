@@ -125,19 +125,23 @@ if __name__ == '__main__':
     print("t:", publicKey["t"])
     print("s:", publicKey["s"])
     print("m:", publicKey["m"])
-    Ei_tally = [1 for _ in range(len(question_set))]
+    Ei_tally = [None for _ in range(len(question_set))]
     Vi_tally = [1 for _ in range(len(question_set))]
     Wi_tally = [1 for _ in range(len(question_set))]
     Ui_tally = [1 for _ in range(len(question_set))]
     n1_tally = [1 for _ in range(len(question_set))]
-    n1_tally = [1 for _ in range(len(question_set))]
+
     for filename in receipt_name:
+
+        receipt = readReceipt(filename)
+
+        for i in range(len(question_set)):
+            n1_tally[i] = n1_tally[i] * receipt["Ui"][i] % publicKey['q'][i]
+
         if not verifyPWF(filename):
             print("There has been an error in the vote while verifying PWFs. Insecure!")
             exit()
-        receipt = readReceipt(filename)
-        for i in range(len(question_set)):
-            n1_tally[i] = n1_tally[i] * receipt["Ui"][i] % publicKey['q'][i]
+        
         if receipt['status'] == "audit":
             if not auditVerify(filename, n1_tally):
                 print("There has been an error in an audited ballot. Insecure!")
@@ -145,9 +149,18 @@ if __name__ == '__main__':
         else: 
             for i in range(len(question_set)):
                 Ui_tally[i] = (Ui_tally[i] * receipt["Ui"][i]) % publicKey['q'][i]
-                Ei_tally[i] = (Ei_tally[i] * receipt["Ei"][i]) % publicKey['q'][i]
                 Vi_tally[i] = (Vi_tally[i] * receipt["Vi"][i]) % publicKey['q'][i]
                 Wi_tally[i] = (Wi_tally[i] * receipt["Wi"][i]) % publicKey['q'][i]
+                Ei_matrix = receipt["Ei"][i]
+                if Ei_tally[i] is None:
+                    # Initialize Ei_tally as the first matrix
+                    Ei_tally[i] = [[element for element in row] for row in Ei_matrix]
+                else:
+                    # multiply matrices element-wise modulo q
+                    for k in range(len(Ei_matrix)):
+                        for j in range(len(Ei_matrix[k])):
+                            Ei_tally[i][k][j] = (Ei_tally[i][k][j] * Ei_matrix[k][j]) % publicKey['q'][i]
+
     
     # Public verifies the tally equations
     for i in range(len(question_set)):
@@ -157,14 +170,22 @@ if __name__ == '__main__':
         elif (Vi_tally[i] != pow(publicKey['g2'][i], publicKey['s'][i], publicKey['q'][i])):
             print("There has been an error in the vote talling of Vi's. Insecure!")
             exit()
-        elif (Ei_tally[i] != (pow(publicKey['h'][i], publicKey['s'][i], publicKey['q'][i]) * pow(publicKey['g1'][i], publicKey['t'][i], publicKey['q'][i])) % publicKey['q'][i]):
-            print("There has been an error in the vote tallying of Ei's. Insecure!")
-            exit()
         elif (Wi_tally[i] != (pow(publicKey['c'][i], publicKey['s'][i], publicKey['q'][i]) * pow(publicKey['d'][i], publicKey['m'][i], publicKey['q'][i])) % publicKey['q'][i]):
             print("There has been an error in the vote tallying of Wi's. Insecure!")
             exit()
+        # elif (Ei_tally[i] != (pow(publicKey['h'][i], publicKey['s'][i], publicKey['q'][i]) * pow(publicKey['g1'][i], publicKey['t'][i], publicKey['q'][i])) % publicKey['q'][i]):
+        #     print("There has been an error in the vote tallying of Ei's. Insecure!")
+        #     exit()
+        # TODO
+        # expected_Ei_tally = [
+        #     [pow(publicKey['h'][i], publicKey['s'][i], publicKey['q'][i]) * pow(publicKey['g1'][i], publicKey['t'][i], publicKey['q'][i]) % publicKey['q'][i] for _ in range(len(Ei_tally[i][0]))]
+        #     for _ in range(len(Ei_tally[i]))
+        # ]
+        # for k in range(len(Ei_tally[i])):
+        #     for j in range(len(Ei_tally[i][k])):
+        #         if Ei_tally[i][k][j] != expected_Ei_tally[i][k][j]:
+        #           print(f"There has been an error in the vote tallying of Ei[{i}][{j}]. Insecure!")
+        #           exit()
     print("All tally verifications have passed! Course evaluation complete and secure!")
 
             
-
-

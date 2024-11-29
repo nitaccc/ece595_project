@@ -1,6 +1,7 @@
 # return a list from a string
-def removeList(s):
-    s = s.split(":")[1].strip("[] \n")
+def removeList(s, flag = True):
+    if flag: s = s.split(":")[1].strip("[] \n")
+    else: s = s.strip("[] \n")
     result = [int(num) for num in s.split(",")]
     return result
 
@@ -31,19 +32,26 @@ def printReceipt(receipt, question_len, opt = False):
 
     f.write("\nBallot ID: " + str(receipt["id"]))
     for i in range(question_len):
+        f.write("\n\nQuestion " + str(i+1))
         f.write("\nUi: " + str(receipt["Ui"][i]))
         f.write("\nVi: " + str(receipt["Vi"][i]))
-        f.write("\nEi: " + str(receipt["Ei"][i]))
         f.write("\nWi: " + str(receipt["Wi"][i]))
-        tmp = "".join([
-            "\nPWF: ",
-            "\n  r: ", str(receipt["Pwf"][i]["r"]),
-            "\n  U: ", str(receipt["Pwf"][i]["U"]),
-            "\n  V: ", str(receipt["Pwf"][i]["V"]),
-            "\n  E: ", str(receipt["Pwf"][i]["E"]),
-            "\n  W: ", str(receipt["Pwf"][i]["W"])
-        ])
-        f.write(tmp)
+        f.write("\nEi: \n")
+        for row in receipt["Ei"][i]:
+            f.write(str(row) + "\n")
+        for row_idx, row in enumerate(receipt["Pwf"][i]):
+            f.write(f"\nPWF_Ei Row {row_idx + 1}:")
+            # Iterate through columns of the row
+            for col_idx, proof in enumerate(row):
+                f.write(f"\n  Proof for element ({row_idx + 1}, {col_idx + 1}):")
+                tmp = "".join([
+                    "\n    r: ", str(proof["r"]),
+                    "\n    U: ", str(proof["U"]),
+                    "\n    V: ", str(proof["V"]),
+                    "\n    E: ", str(proof["E"]),
+                    "\n    W: ", str(proof["W"])
+                ])
+                f.write(tmp)
         tmp = "".join([
             "\nPk_s1: ",
             "\n  t: ", str(receipt["Pk_s1"][i][0]),
@@ -73,46 +81,73 @@ def readReceipt(filename):
     f.close()
     id = int(lines[1][11:-1])
     t = 0
-    if len(lines) > 36: t = 1
-    Ui = [int(lines[2][4:-1]), int(lines[19+t][4:-1])]
-    Vi = [int(lines[3][4:-1]), int(lines[20+t][4:-1])]
-    Ei = [int(lines[4][4:-1]), int(lines[21+t][4:-1])]
-    Wi = [int(lines[5][4:-1]), int(lines[22+t][4:-1])]
+    if len(lines) < 350: t = -1
+    Ui = [int(lines[4][4:-1]), int(lines[179+t][4:-1])]
+    Vi = [int(lines[5][4:-1]), int(lines[180+t][4:-1])]
+    Wi = [int(lines[6][4:-1]), int(lines[181+t][4:-1])]
+    Ei = []
+    tmp_Ei = []
+    ei_start_idx = 8
+    while lines[ei_start_idx].startswith("["):  # Check if line starts with a matrix row
+        tmp_Ei.append(eval(lines[ei_start_idx].strip()))  # Strip any leading/trailing whitespace and convert the string representation to a list
+        ei_start_idx += 1
+    Ei.append(tmp_Ei)
+    tmp_Ei = []
+    ei_start_idx = 183+t
+    while lines[ei_start_idx].startswith("["):  # Check if line starts with a matrix row
+        tmp_Ei.append(eval(lines[ei_start_idx].strip()))  # Strip any leading/trailing whitespace and convert the string representation to a list
+        ei_start_idx += 1
+    Ei.append(tmp_Ei)
 
-    r = removeList(lines[7])
-    U = removeList(lines[8])
-    V = removeList(lines[9])
-    E = removeList(lines[10])
-    W = removeList(lines[11])
-    Pwf = [{"r": r, "U": U, "V": V, "E": E, "W": W}]
-    r = removeList(lines[24+t])
-    U = removeList(lines[25+t])
-    V = removeList(lines[26+t])
-    E = removeList(lines[27+t])
-    W = removeList(lines[28+t])
-    Pwf.append({"r": r, "U": U, "V": V, "E": E, "W": W})
+    Pwf = []
+    start_idx = [14, 189+t]
+    for question in range(2):
+        tmp_Pwf = []
+        row_idx = start_idx[question]
+        while row_idx < len(lines) and lines[row_idx].startswith("PWF_Ei Row"):
+            current_row = []  # Temporary storage for proofs in the current row
+            
+            # Process proofs in the current row
+            proof_idx = row_idx + 1
+            while proof_idx < len(lines) and lines[proof_idx].startswith("  Proof for element"):
+                proof = {}
 
-    tt = int(lines[13][5:-1])
-    r = int(lines[14][5:-1])
+                # Extract values for r, U, V, E, W
+                proof["r"] = [int(x) for x in lines[proof_idx + 1].split(":")[1].strip(" []\n").split(",")]
+                proof["U"] = [int(x) for x in lines[proof_idx + 2].split(":")[1].strip(" []\n").split(",")]
+                proof["V"] = [int(x) for x in lines[proof_idx + 3].split(":")[1].strip(" []\n").split(",")]
+                proof["E"] = [int(x) for x in lines[proof_idx + 4].split(":")[1].strip(" []\n").split(",")]
+                proof["W"] = [int(x) for x in lines[proof_idx + 5].split(":")[1].strip(" []\n").split(",")]
+                
+                current_row.append(proof)
+                proof_idx += 6  # Move to the next proof element
+
+            tmp_Pwf.append(current_row)  # Append the completed row to Pwf
+            row_idx = proof_idx  # Move to the next row
+        Pwf.append(tmp_Pwf)
+
+    tt = int(lines[170][5:-1])
+    r = int(lines[171][5:-1])
     Pk_s1 = [(tt, r)]
-    tt = int(lines[30+t][5:-1])
-    r = int(lines[31+t][5:-1])
+    tt = int(lines[345+t][5:-1])
+    r = int(lines[346+t][5:-1])
     Pk_s1.append((tt, r))
     
-    if len(lines) > 36:
-        tt = int(lines[16][5:-1])
-        r = int(lines[17][5:-1])
+    if len(lines) > 349:
+        tt = int(lines[173][5:-1])
+        r = int(lines[174][5:-1])
         Pk_s = [(tt, r)]
-        tt = int(lines[34][5:-1])
-        r = int(lines[35][5:-1])
+        tt = int(lines[348][5:-1])
+        r = int(lines[349][5:-1])
         Pk_s.append((tt, r))
         receipt = {"status": "confirm", "id": id, "Ui": Ui, "Vi": Vi, "Ei": Ei, "Wi": Wi, "Pwf": Pwf, "Pk_s1": Pk_s1, "Pk_s": Pk_s}
     else:
-        ballot = [int(lines[15][-2]), int(lines[32][-2])]
-        ri = [int(lines[16][4:-1]), int(lines[33][4:-1])]
+        ballot = [eval(lines[172][8:]), eval(lines[346][8:])]
+        ri = [int(lines[173][4:-1]), int(lines[347][4:-1])]
         receipt = {"status": "audit", "id": id, "Ui": Ui, "Vi": Vi, "Ei": Ei, "Wi": Wi, "Pwf": Pwf, "Pk_s1": Pk_s1, "ballot": ballot, "ri": ri}
 
     return receipt
+
 
 
 # combine two receipts
