@@ -26,12 +26,12 @@ def genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei_matrix, Wi, q):
     proofs = [[None for _ in range(num_cols)] for _ in range(num_rows)]
 
     for r in range(num_rows):
-        for c in range(num_cols):
-            Ei = Ei_matrix[r][c]
+        for col in range(num_cols):
+            Ei = Ei_matrix[r][col]
 
-            tmp = str(Ui) + str(Vi) + str(Ei)
+            tmp = str(Ui) + str(Vi) + str(Ei_matrix)
             alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-            alpha = int(alpha, 16)
+            alpha = int(alpha, 16) % q
 
             r1 = randint(1, q - 1)
             t1_U = pow(g1, r1, q)
@@ -45,15 +45,16 @@ def genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei_matrix, Wi, q):
             t2_E = pow(h, r2, q)
             t2_W = (pow(c, r2, q) * pow(d, (r2 * alpha), q)) % q
 
-            tmp = str(g1) + str(g2) + str(c) + str(d) + str(h) + str(Ui) + str(Vi) + str(Ei) + str(Wi) + str(t1_U) + str(t1_V) + str(t1_E) + str(t1_W) + str(t2_U) + str(t2_V) + str(t2_E) + str(t2_W)
+            #tmp = str(g1) + str(g2) + str(c) + str(d) + str(h) + str(Ui) + str(Vi) + str(Ei) + str(Wi) + str(t1_U) + str(t1_V) + str(t1_E) + str(t1_W) + str(t2_U) + str(t2_V) + str(t2_E) + str(t2_W)
+            tmp = f"{g1}{g2}{c}{d}{h}{Ui}{Vi}{Ei}{Wi}{t1_U}{t1_V}{t1_E}{t1_W}{t2_U}{t2_V}{t2_E}{t2_W}"
             c_hash = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-            c_hash = int(c_hash, 16)
+            c_hash = int(c_hash, 16) % q
 
             v1 = (r1 - c_hash * ri) % (q - 1)
             v2 = (r2 - c_hash * ri) % (q - 1)
 
             # Store proof for the current element
-            proofs[r][c] = {
+            proofs[r][col] = {
                 "r": [v1, v2],
                 "U": [t1_U, t2_U],
                 "V": [t1_V, t2_V],
@@ -90,7 +91,7 @@ def calculate_Ei_matrix(vote_matrix, g1, q, h, ri):
     # Perform element-wise exponentiation
     for r in range(num_rows):
         for c in range(num_cols):
-            Ei_matrix[r][c] = pow(h, ri, q) * pow(g1, vote_matrix[r][c], q)
+            Ei_matrix[r][c] = (pow(h, ri, q) * pow(g1, vote_matrix[r][c], q)) % q
     
     return Ei_matrix
 
@@ -109,7 +110,7 @@ def DRE_receipt(i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
     Ei = calculate_Ei_matrix(vote_matrix, g1, q, h, ri)
     tmp = str(Ui) + str(Vi) + str(Ei)
     alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-    alpha = int(alpha, 16)
+    alpha = int(alpha, 16) % q
     Wi = pow(c, ri, q) * pow(d, (ri*alpha), q) % q
 
     Pwf = genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei, Wi, q)

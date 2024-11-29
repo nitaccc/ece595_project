@@ -11,7 +11,7 @@ def readReceipt(filename):
     Ei = []
     ei_start_idx = 5
     while lines[ei_start_idx].startswith("["):  # Check if line starts with a matrix row
-        Ei.append(eval(lines[ei_start_idx][1:-2]))  # Convert the string representation of the list to a list
+        Ei.append(eval(lines[ei_start_idx].strip()))  # Strip any leading/trailing whitespace and convert the string representation to a list
         ei_start_idx += 1
 
     Wi = int(lines[ei_start_idx][4:-1])
@@ -120,7 +120,6 @@ def multiplicativeInverse(aa, bb):
 def verifySingleProof(v1, tu1, g1, u, c, q):
     check_t = pow(g1, v1, q) * pow(u, c, q)
     check_t = check_t % q
-    print(f"left: {check_t}, t (right): {tu1}")
     if check_t == tu1:
         return True
     else:
@@ -142,19 +141,13 @@ def verifyPWF(filename):
             tE = proof["E"]
             tW = proof["W"]
 
-            tmp = (
-                str(g1) + str(g2) + str(c) + str(d) + str(h) +
-                str(receipt["Ui"]) + str(receipt["Vi"]) + 
-                str(element) + str(receipt["Wi"]) +
-                str(tU[0]) + str(tV[0]) + str(tE[0]) + str(tW[0]) +
-                str(tU[1]) + str(tV[1]) + str(tE[1]) + str(tW[1])
-            )
+            tmp = f"{g1}{g2}{c}{d}{h}{receipt['Ui']}{receipt['Vi']}{element}{receipt['Wi']}{tU[0]}{tV[0]}{tE[0]}{tW[0]}{tU[1]}{tV[1]}{tE[1]}{tW[1]}"
             c_hash = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-            c_hash = int(c_hash, 16)
+            c_hash = int(c_hash, 16) % q
 
-            tmp = str(receipt["Ui"]) + str(receipt["Vi"]) + str(element)
+            tmp = str(receipt["Ui"]) + str(receipt["Vi"]) + str(receipt["Ei"])
             alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-            alpha = int(alpha, 16)
+            alpha = int(alpha, 16) % q
 
             valid_first_r = (
                 verifySingleProof(tr[0], tU[0], g1, receipt["Ui"], c_hash, q) and
@@ -162,15 +155,13 @@ def verifyPWF(filename):
                 verifySingleProof(tr[0], tE[0], h, element, c_hash, q) and
                 verifySingleProof(tr[0], tW[0], (c * pow(d, alpha, q) % q), receipt["Wi"], c_hash, q)
             )
-            print("valid first r: " + str(valid_first_r))
 
             valid_second_r = (
                 verifySingleProof(tr[1], tU[1], g1, receipt["Ui"], c_hash, q) and
                 verifySingleProof(tr[1], tV[1], g2, receipt["Vi"], c_hash, q) and
-                verifySingleProof(tr[1], tE[1], h, element, c_hash, q) and
+                verifySingleProof(tr[1], tE[1], h, (element * multiplicativeInverse(q, g1)) % q, c_hash, q) and
                 verifySingleProof(tr[1], tW[1], (c * pow(d, alpha, q) % q), receipt["Wi"], c_hash, q)
             )
-            print("valid first r: " + str(valid_second_r))
 
             # if neither proof passes, the verification fails
             if not (valid_first_r or valid_second_r):
