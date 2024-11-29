@@ -4,11 +4,9 @@
 #       the voter should keep the internal nullifier privately
 #       system only receives the hash value 
 
-import sys
 import hashlib
 import string
 import secrets
-import warnings
 
 
 

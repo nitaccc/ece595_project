@@ -1,7 +1,6 @@
 import hashlib
 import time
-from verify import verifyPWF, verifySingleProof, auditVerify, readReceipt
-from zkp import genProof_s1
+from verify import verifyPWF, verifySingleProof, auditVerify
 
 class Block:
     def __init__(self, index, previous_hash, receipt, filename, timestamp=None):
@@ -42,12 +41,13 @@ class Blockchain:
             print("PWF failed in blockchain.")
             return False
         # Pk s1
-        tmp = str(g1) + str(n1) + str(receipt["Pk_s1"][0])
-        hash_c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-        hash_c = int(hash_c, 16)
-        if not verifySingleProof(receipt["Pk_s1"][1], receipt["Pk_s1"][0], g1, n1, hash_c, q):
-            print("Pks1 failed in blockchain.")
-            return False
+        for i in range(len(c)):
+            tmp = str(g1[i]) + str(n1[i]) + str(receipt["Pk_s1"][i][0])
+            hash_c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+            hash_c = int(hash_c, 16)
+            if not verifySingleProof(receipt["Pk_s1"][i][1], receipt["Pk_s1"][i][0], g1[i], n1[i], hash_c, q[i]):
+                print("Pks1 failed in blockchain.")
+                return False
 
         if receipt["status"] != "confirm":
             # verify ri and vi for audited ballot
@@ -56,12 +56,13 @@ class Blockchain:
                 return False
         else: 
             # verify Pks for confirmed ballot
-            tmp = str(g1) + str(n) + str(receipt["Pk_s"][0])
-            hash_c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-            hash_c = int(hash_c, 16)
-            if not verifySingleProof(receipt["Pk_s"][1], receipt["Pk_s"][0], g1, n, hash_c, q):
-                print("Pks failed in blockchain.")
-                return False
+            for i in range(len(c)):
+                tmp = str(g1[i]) + str(n[i]) + str(receipt["Pk_s"][i][0])
+                hash_c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+                hash_c = int(hash_c, 16)
+                if not verifySingleProof(receipt["Pk_s"][i][1], receipt["Pk_s"][i][0], g1[i], n[i], hash_c, q[i]):
+                    print("Pks failed in blockchain.")
+                    return False
 
         previous_block = self.chain[-1]
         new_block = Block(len(self.chain), previous_block.hash, receipt, filename)

@@ -2,10 +2,11 @@
 #       - calculate zkp of s1 and s and Pwf
 #       - generate receipt file
 
-from random import randint
+
 import hashlib
-import socket
 import pickle
+from random import randint
+from util import mergeReceipt
 
 
 def genProof_s1(n1, g1, s1, q):
@@ -59,34 +60,40 @@ def genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei, Wi, q):
 
 
 
-def DRE_receipt(connection, i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
-    # vi = input("Type 0 or 1: ")
+def DRE_receipt(connection, i, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
+    merge_r = {"id": i, "Ui": [], "Vi": [], "Ei": [], "Wi": [], "Pwf": [], "Pk_s1": []}
+    all_vi = []
+    all_ri = []
+    all_alpha = []
+    for question_idx in range(question_len):
+        while True:
+            tmp = connection.recv(512)
+            if len(tmp) > 0:
+                break
+        vi = int(tmp.decode())
+        ri = randint(1, q[question_idx]-1)
+        Ui = pow(g1[question_idx], ri, q[question_idx])
+        Vi = pow(g2[question_idx], ri, q[question_idx])
+        Ei = pow(h[question_idx], ri, q[question_idx]) * pow(g1[question_idx], vi, q[question_idx])
+        tmp = str(Ui) + str(Vi) + str(Ei)
+        alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
+        alpha = int(alpha, 16)
+        Wi = pow(c[question_idx], ri, q[question_idx]) * pow(d[question_idx], (ri*alpha), q[question_idx]) % q[question_idx]
+
+        Pwf = genProof_Ei(ri, g1[question_idx], g2[question_idx], c[question_idx], d[question_idx], h[question_idx], Ui, Vi, Ei, Wi, q[question_idx])
+        s1[question_idx] = s1[question_idx] + ri
+        n1[question_idx] = n1[question_idx] * Ui % q[question_idx]
+        Pk_s1 = genProof_s1(n1[question_idx], g1[question_idx], s1[question_idx], q[question_idx])
+
+        # first half of the receipt
+        receipt = {"id": i, "Ui": Ui, "Vi": Vi, "Ei": Ei, "Wi": Wi, "Pwf": Pwf, "Pk_s1": Pk_s1}
+        connection.send(pickle.dumps(receipt))
+        merge_r = mergeReceipt(merge_r, receipt)
+        all_vi.append(vi)
+        all_ri.append(ri)
+        all_alpha.append(alpha)
+    
     while True:
-        tmp = connection.recv(512)
-        if len(tmp) > 0:
-            break
-    vi = int(tmp.decode())
-    ri = randint(1, q-1)
-    Ui = pow(g1, ri, q)
-    Vi = pow(g2, ri, q)
-    Ei = pow(h, ri, q) * pow(g1, vi, q)
-    tmp = str(Ui) + str(Vi) + str(Ei)
-    alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
-    alpha = int(alpha, 16)
-    Wi = pow(c, ri, q) * pow(d, (ri*alpha), q) % q
-
-    Pwf = genProof_Ei(ri, g1, g2, c, d, h, Ui, Vi, Ei, Wi, q)
-    s1 = s1 + ri
-    n1 = n1 * Ui % q
-    Pk_s1 = genProof_s1(n1, g1, s1, q)
-
-    # first half of the receipt
-    receipt = {"id": i, "Ui": Ui, "Vi": Vi, "Ei": Ei, "Wi": Wi, "Pwf": Pwf, "Pk_s1": Pk_s1}
-    connection.send(pickle.dumps(receipt))
-
-    # check their decision
-    while True:
-        # decision = input("Confirm (y/n): ")
         while True:
             tmp = connection.recv(512)
             if len(tmp) > 0:
@@ -95,67 +102,22 @@ def DRE_receipt(connection, i, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
         # audit receipt: (i : (Ui, Vi, Ei, Wi, Pwf{Ei}, PK{s1}), (audited, ri, vi)
         # confirm receipt: (i : (Ui, Vi, Ei, Wi, PWF{Ei}, PK{s1}), (confirmed, PK{s})
         if decision == "n":
-            receipt["status"] = "audit"
-            receipt["ballot"] = vi
-            receipt["ri"] = ri
+            merge_r["status"] = "audit"
+            merge_r["ballot"] = all_vi
+            merge_r["ri"] = all_ri
+            connection.send(pickle.dumps(["audit", all_vi, all_ri]))
             break
         elif decision == "y":
-            receipt["status"] = "confirm"
-            t = t + vi
-            m = m + ri * alpha
-            s = s + ri
-            n = n * Ui % q
-            Pk_s = genProof_s1(n, g1, s, q)
-            receipt["Pk_s"] = Pk_s
+            merge_r["status"] = "confirm"
+            Pk_s = []
+            for i in range(question_len):
+                t[i] = t[i] + all_vi[i]
+                m[i] = m[i] + all_ri[i] * all_alpha[i]
+                s[i] = s[i] + all_ri[i]
+                n[i] = n[i] * merge_r['Ui'][i] % q[i]
+                Pk_s.append(genProof_s1(n[i], g1[i], s[i], q[i]))
+            merge_r["Pk_s"] = Pk_s
+            connection.send(pickle.dumps(["confirm", Pk_s]))
             break
     
-    connection.send(pickle.dumps(receipt))
-    return t, m, s, s1, n, n1, receipt
-
-
-
-def printReceipt(receipt, opt = False):
-    if opt: 
-        filename = "VoterReceipt" + str(receipt["id"]) + ".txt"
-    else:
-        filename = "Receipt" + str(receipt["id"]) + ".txt"
-    f = open(filename, "w")
-    if receipt["status"] == "confirm":
-        f.write("This ballot is counted.")
-    else:
-        f.write("This ballot did not count.")
-
-    f.write("\nBallot ID: " + str(receipt["id"]))
-    f.write("\nUi: " + str(receipt["Ui"]))
-    f.write("\nVi: " + str(receipt["Vi"]))
-    f.write("\nEi: " + str(receipt["Ei"]))
-    f.write("\nWi: " + str(receipt["Wi"]))
-    tmp = "".join([
-        "\nPWF: ",
-        "\n  r = ", str(receipt["Pwf"]["r"]),
-        "\n  U = ", str(receipt["Pwf"]["U"]),
-        "\n  V = ", str(receipt["Pwf"]["V"]),
-        "\n  E = ", str(receipt["Pwf"]["E"]),
-        "\n  W = ", str(receipt["Pwf"]["W"])
-    ])
-    f.write(tmp)
-    tmp = "".join([
-        "\nPk_s1: ",
-        "\n  t = ", str(receipt["Pk_s1"][0]),
-        "\n  r = ", str(receipt["Pk_s1"][1])
-    ])
-    f.write(tmp)
-
-    if receipt["status"] == "confirm":
-        tmp = "".join([
-            "\nPk_s: ",
-            "\n  t = ", str(receipt["Pk_s"][0]),
-            "\n  r = ", str(receipt["Pk_s"][1])
-        ])
-        f.write(tmp)
-    else:
-        f.write("\nBallot: " + str(receipt["ballot"]))
-        f.write("\nri: " + str(receipt["ri"]))
-
-    f.close()
-    return filename
+    return t, m, s, s1, n, n1, merge_r

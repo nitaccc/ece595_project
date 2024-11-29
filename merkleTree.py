@@ -1,16 +1,14 @@
 # Construct Merkle Tree
-#       since it requires 2^n leaf nodes and we have 21 students
+#       since it requires 2^n leaf nodes and we only have 21 students
 #       the minimum nodes will be 32
-#       assume we have a list with 32 hashed value
-#       (leave it and replace it with real ID, so it will be 21 real hash + 11 random hash
-#       consider it later
+#       construct a list with 32 random hashed value
+#       then replace it with real hash
+#       if voted, then remove the hash value and construct a new tree
 
-import secrets
-import string
 import secrets
 import hashlib
 from genHashID import gen_voterHash
-from class_merkleTree import MerkleTree, Node
+from class_merkleTree import MerkleTree
 
 
 
@@ -35,21 +33,7 @@ def verify_hash(mtree, verify_value):
         return True
     else:
         return False
-
-
-# def register(mtree):
-#     while True:
-#         studentID = input("Please enter 10 digits student ID: ")
-#         if len(studentID) == 10:
-#             secretKey = input("Please enter the secret key: ")
-#             ID32 = bytes(studentID + secretKey, 'utf-8')
-#             test = hashlib.sha256(ID32).hexdigest()
-#             if verify_hash(mtree, test):
-#                 print("Passed.")
-#                 return test
-#             else:
-#                 print(test)
-#                 print("Failed.")
+    
 
 
 if __name__ == '__main__':

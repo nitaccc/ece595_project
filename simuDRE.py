@@ -1,15 +1,14 @@
 import socket
 import pickle
-import hashlib
 import string 
 import secrets
-from random import randint
 from genHashID import gen_voterHash
 from merkleTree import construct_MerkleTree, verify_hash
 from genKey import key_generation
-from zkp import printReceipt, DRE_receipt
+from zkp import DRE_receipt
 from verify import verifyPWF, auditVerify
 from blockChain import Blockchain
+from util import printReceipt
 
 
 
@@ -30,21 +29,26 @@ if __name__ == '__main__':
             hash_list.append(data[0])
             print("Registered!")
     mtree = construct_MerkleTree(hash_list)
-    print("End of Registration\n\n\n")
+    print("End of Registration. \n\n\n")
+    connection.send('E'.encode(encoding='utf-8'))
     # Finish Registration
         
     # Initialize
-    c, d, h, q, g1, g2 = key_generation()
-    t = 0
-    m = 0
-    s = 0
-    s1 = 0
-    n = 1
-    n1 = 1
-    audit = []
-    confirm = []
+    while True:
+        tmp = connection.recv(512)
+        if tmp:
+            question_len = int(tmp.decode())
+            break
+    c, d, h, q, g1, g2 = key_generation(question_len)
+    t = [0 for _ in range(question_len)]
+    m = [0 for _ in range(question_len)]
+    s = [0 for _ in range(question_len)]
+    s1 = [0 for _ in range(question_len)]
+    n = [1 for _ in range(question_len)]
+    n1 = [1 for _ in range(question_len)]
     count = 0
     blockchain = Blockchain()
+    print("Start Voting...")
     
     # Voting
     while True:
@@ -66,13 +70,12 @@ if __name__ == '__main__':
         
         # receive ballot, send first half of the receipt
         # then receive decision, send rest of the receipt
-        t, m, s, s1, n, n1, receipt = DRE_receipt(connection, count, c, d, h, q, g1, g2, s1, n1, t, m, s, n)
-        tmp = printReceipt(receipt)
+        t, m, s, s1, n, n1, receipt = DRE_receipt(connection, count, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s, n)
+        tmp = printReceipt(receipt, question_len)
         print(tmp, "is generated.")
 
         if receipt["status"] != "confirm":
             # audit
-            audit.append(count)
             # creates a block and mines it in the block-chain
             block_success = blockchain.add_block(receipt, tmp, n1, g1, q, n, s, c)
             if not block_success:
@@ -81,7 +84,6 @@ if __name__ == '__main__':
                 print(f"Blockchain is valid: {blockchain.is_chain_valid()} \n")
         else:
             # confirm
-            confirm.append(count)
             # update Merkle Tree -> prevent double voting
             idx = hash_list.index(verifyID.hex())
             studentID = ''.join(secrets.choice(string.digits) for i in range(10))
@@ -93,37 +95,37 @@ if __name__ == '__main__':
                 print("Receipt failed blockchain verification. Not added to chain. \n")
             else:
                 print(f"Blockchain is valid: {blockchain.is_chain_valid()} \n")
-    print("Voting End\n\n\n")
+    print("End of Voting.\n\n\n")
 
 
     # Tally
-    print("\nTally")
-    print("(c, d, h): ", c, d, h)
-    print("q = ", q)
-    print("g1 = ", g1)
-    print("g2 = ", g2)
-    # These are posted to the public
-    print("t = ", t)
-    print("s = ", s)
-    print("m = ", m)
-    
+    print("\nTally:")
+    print("t:", t)
+    print("s:", s)
+    print("m:", m, "\n")
+    for i in range(2):
+        print("Question", i+1, ":", t[i]/question_len, "agree. ")
+    publicKey = {"c": c, "d": d, "h": h, "q": q, "g1": g1, "g2": g2, "t": t, "s": s, "m": m}
+    connection.send(pickle.dumps(publicKey))
+
+
     # Verify tally w/ blockchain
-    Ei_tally = 1
-    Vi_tally = 1
-    Wi_tally = 1
-    Ui_tally = 1
-    n1_tally = 1
+    Ei_tally = [1 for _ in range(question_len)]
+    Vi_tally = [1 for _ in range(question_len)]
+    Wi_tally = [1 for _ in range(question_len)]
+    Ui_tally = [1 for _ in range(question_len)]
+    n1_tally = [1 for _ in range(question_len)]
 
     for block in blockchain.chain:
         
-
         if block.receipt == "Genesis Block":
             continue
         
         block_receipt = block.receipt
         block_receipt_file = block.file
 
-        n1_tally = n1_tally * block_receipt["Ui"] % q
+        for i in range(question_len):
+            n1_tally[i] = n1_tally[i] * block_receipt["Ui"][i] % q[i]
 
         # Public verifies PWF
         if not verifyPWF(block_receipt_file):
@@ -133,24 +135,27 @@ if __name__ == '__main__':
         # Public verifies vi and ri for audited ballots
         if block_receipt["status"] != "confirm":
             if not auditVerify(block_receipt_file, n1_tally): # TODO how do we get n1
-                print("There has been an error in an audited ballot. Insecure!")
+                print("There has been an error in fan audited ballot. Insecure!")
                 exit()
         else:
-            Ui_tally = (Ui_tally * block_receipt["Ui"]) % q
-            Ei_tally = (Ei_tally * block_receipt["Ei"]) % q
-            Vi_tally = (Vi_tally * block_receipt["Vi"]) % q
-            Wi_tally = (Wi_tally * block_receipt["Wi"]) % q
+            for i in range(question_len):
+                Ui_tally[i] = (Ui_tally[i] * block_receipt["Ui"][i]) % q[i]
+                Ei_tally[i] = (Ei_tally[i] * block_receipt["Ei"][i]) % q[i]
+                Vi_tally[i] = (Vi_tally[i] * block_receipt["Vi"][i]) % q[i]
+                Wi_tally[i] = (Wi_tally[i] * block_receipt["Wi"][i]) % q[i]
     
     # Public verifies the tally equations
-    if (Ui_tally != pow(g1, s, q)):
-        print("There has been an error in the vote tallying of Ui's. Insecure!")
-        print(str(Ui_tally))
-        print(str(pow(g1, s, q)))
-    elif (Vi_tally != pow(g2, s, q)):
-        print("There has been an error in the vote talling of Vi's. Insecure!")
-    elif (Ei_tally != (pow(h, s, q) * pow(g1, t, q)) % q):
-        print("There has been an error in the vote tallying of Ei's. Insecure!")
-    elif (Wi_tally != (pow(c, s, q) * pow(d, m, q)) % q):
-        print("There has been an error in the vote tallying of Wi's. Insecure!")
-    else:
-        print("All tally verifications have passed! Course evaluation complete and secure!")
+    for i in range(question_len):
+        if (Ui_tally[i] != pow(g1[i], s[i], q[i])):
+            print("There has been an error in the vote tallying of Ui's. Insecure!")
+            exit()
+        elif (Vi_tally[i] != pow(g2[i], s[i], q[i])):
+            print("There has been an error in the vote talling of Vi's. Insecure!")
+            exit()
+        elif (Ei_tally[i] != (pow(h[i], s[i], q[i]) * pow(g1[i], t[i], q[i])) % q[i]):
+            print("There has been an error in the vote tallying of Ei's. Insecure!")
+            exit()
+        elif (Wi_tally[i] != (pow(c[i], s[i], q[i]) * pow(d[i], m[i], q[i])) % q[i]):
+            print("There has been an error in the vote tallying of Wi's. Insecure!")
+            exit()
+    print("All tally verifications have passed! Course evaluation complete and secure!")
