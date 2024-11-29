@@ -1,5 +1,6 @@
 import hashlib
 from util import readPublicKey, readReceipt
+from zkp import calculate_Ei_matrix
 
 
 # find the modular multiplicative inverse of bb of Z_aa
@@ -97,9 +98,11 @@ def auditVerify(filename, n1):
         if pow(g2[i], ri, q[i]) != receipt["Vi"][i]:
             return False
         
-        # TODO
-        # if pow(h[i], ri, q[i]) * pow(g1[i], vi, q[i]) != receipt["Ei"][i]:
-        #     return False
+        tmp = calculate_Ei_matrix(vi, g1[i], q[i], h[i], ri)
+        for row in range(len(tmp)):
+            for col in range(len(tmp[row])):
+                if tmp[row][col] != receipt["Ei"][i][row][col]:
+                    return False
         
         tmp = str(receipt["Ui"][i]) + str(receipt["Vi"][i]) + str(receipt["Ei"][i])
         alpha = hashlib.sha256(tmp.encode("utf-8")).hexdigest()

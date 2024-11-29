@@ -8,6 +8,9 @@ from verify import verifyPWF, auditVerify
 from util import printReceipt, readReceipt
 
 
+NUM_CANDIDATES = 5
+
+
 def mergeReceipt(r1, r2):
     r1["id"] = r2["id"]
     r1["Ui"].append(r2["Ui"])
@@ -48,7 +51,7 @@ if __name__ == '__main__':
         tmp = clientsocket.recv(512)
         if len(tmp) > 0:
             break
-    question_set = ["You learn a lot from this course. Strongly Agree(5) ~ Strongly Disagree(1): ", "You prefer take this course in person. Strongly Agree(5) ~ Strongly Disagree(1): "]
+    question_set = ["You learn a lot from this course. ", "You prefer take this course in person. "]
     clientsocket.send(str(len(question_set)).encode(encoding='utf-8'))
     receipt_name = []
 
@@ -68,13 +71,18 @@ if __name__ == '__main__':
         if tmp == bytes(2): 
             print("Identity Verification Failed. ")
             continue
-        print("Identity Verification Passed. \n")
+        print("Identity Verification Passed.")
 
         # send choice, then receive the first part of the receipt
+        print("*****\nEnter 5 if STRONGLY AGREE the statement")
+        print("Enter 4 if slightly agree the statement")
+        print("Enter 3 if neutral")
+        print("Enter 2 if slightly disagree the statement")
+        print("Enter 1 if STRONGLY DISAGREE the statement\n*****")
         merge_r = {"id": 0, "Ui": [], "Vi": [], "Ei": [], "Wi": [], "Pwf": [], "Pk_s1": []}
         for question in question_set:
             while True:
-                vi = input(question)
+                vi = input(question + "Enter 1~5: ")
                 if vi == '1' or vi == '2' or vi == '3' or vi == '4' or vi == '5':
                     break
             clientsocket.send(vi.encode(encoding='utf-8'))
@@ -116,6 +124,7 @@ if __name__ == '__main__':
         if len(tmp) > 0:
             publicKey = pickle.loads(tmp)
             break
+    clientsocket.send(pickle.dumps(question_set))
     print("c:", publicKey["c"])
     print("d:", publicKey["d"])
     print("h:", publicKey["h"])
@@ -125,7 +134,7 @@ if __name__ == '__main__':
     print("t:", publicKey["t"])
     print("s:", publicKey["s"])
     print("m:", publicKey["m"])
-    Ei_tally = [None for _ in range(len(question_set))]
+    Ei_tally = [[[1 for _ in range(NUM_CANDIDATES)] for _ in range(NUM_CANDIDATES)] for _ in range(len(question_set))]
     Vi_tally = [1 for _ in range(len(question_set))]
     Wi_tally = [1 for _ in range(len(question_set))]
     Ui_tally = [1 for _ in range(len(question_set))]
@@ -152,14 +161,10 @@ if __name__ == '__main__':
                 Vi_tally[i] = (Vi_tally[i] * receipt["Vi"][i]) % publicKey['q'][i]
                 Wi_tally[i] = (Wi_tally[i] * receipt["Wi"][i]) % publicKey['q'][i]
                 Ei_matrix = receipt["Ei"][i]
-                if Ei_tally[i] is None:
-                    # Initialize Ei_tally as the first matrix
-                    Ei_tally[i] = [[element for element in row] for row in Ei_matrix]
-                else:
-                    # multiply matrices element-wise modulo q
-                    for k in range(len(Ei_matrix)):
-                        for j in range(len(Ei_matrix[k])):
-                            Ei_tally[i][k][j] = (Ei_tally[i][k][j] * Ei_matrix[k][j]) % publicKey['q'][i]
+                # multiply matrices element-wise modulo q
+                for k in range(len(Ei_matrix)):
+                    for j in range(len(Ei_matrix[k])):
+                        Ei_tally[i][k][j] = (Ei_tally[i][k][j] * Ei_matrix[k][j]) % publicKey['q'][i]
 
     
     # Public verifies the tally equations
@@ -173,19 +178,15 @@ if __name__ == '__main__':
         elif (Wi_tally[i] != (pow(publicKey['c'][i], publicKey['s'][i], publicKey['q'][i]) * pow(publicKey['d'][i], publicKey['m'][i], publicKey['q'][i])) % publicKey['q'][i]):
             print("There has been an error in the vote tallying of Wi's. Insecure!")
             exit()
-        # elif (Ei_tally[i] != (pow(publicKey['h'][i], publicKey['s'][i], publicKey['q'][i]) * pow(publicKey['g1'][i], publicKey['t'][i], publicKey['q'][i])) % publicKey['q'][i]):
-        #     print("There has been an error in the vote tallying of Ei's. Insecure!")
-        #     exit()
-        # TODO
-        # expected_Ei_tally = [
-        #     [pow(publicKey['h'][i], publicKey['s'][i], publicKey['q'][i]) * pow(publicKey['g1'][i], publicKey['t'][i], publicKey['q'][i]) % publicKey['q'][i] for _ in range(len(Ei_tally[i][0]))]
-        #     for _ in range(len(Ei_tally[i]))
-        # ]
-        # for k in range(len(Ei_tally[i])):
-        #     for j in range(len(Ei_tally[i][k])):
-        #         if Ei_tally[i][k][j] != expected_Ei_tally[i][k][j]:
-        #           print(f"There has been an error in the vote tallying of Ei[{i}][{j}]. Insecure!")
-        #           exit()
+        expected_Ei_tally = [
+            [pow(publicKey['h'][i], publicKey['s'][i], publicKey['q'][i]) * pow(publicKey['g1'][i], publicKey['t'][i][row][col], publicKey['q'][i]) % publicKey['q'][i] for col in range(len(Ei_tally[i][0]))]
+            for row in range(len(Ei_tally[i]))
+        ]
+        for k in range(len(Ei_tally[i])):
+            for j in range(len(Ei_tally[i][k])):
+                if Ei_tally[i][k][j] != expected_Ei_tally[k][j]:
+                  print(f"There has been an error in the vote tallying of Ei[{k}][{j}]. Insecure!")
+                  exit()
     print("All tally verifications have passed! Course evaluation complete and secure!")
 
             
