@@ -102,17 +102,20 @@ if __name__ == '__main__':
             tmp = clientsocket.recv(4096)
             if len(tmp) > 0:
                 receipt = pickle.loads(tmp)
-                merge_r['status'] = receipt[0]
-                if receipt[0] == "audit":
-                    merge_r['ballot'] = receipt[1]
-                    merge_r["ri"] = receipt[2]
-                elif receipt[0] == "confirm":
-                    merge_r["Pk_s"] = receipt[1]
+                if receipt[0] == "E":
+                    print("Receipt failed blockchain verification. Please vote again. \n")
+                else:
+                    merge_r['status'] = receipt[0]
+                    if receipt[0] == "audit":
+                        merge_r['ballot'] = receipt[1]
+                        merge_r["ri"] = receipt[2]
+                    elif receipt[0] == "confirm":
+                        merge_r["Pk_s"] = receipt[1]
+                    tmp = printReceipt(merge_r, len(question_set), True)
+                    receipt_name.append(tmp)
+                    print(tmp, "is generated.\n\n\n\n\n\n\n")
                 break
         
-        tmp = printReceipt(merge_r, len(question_set), True)
-        receipt_name.append(tmp)
-        print(tmp, "is generated.\n\n\n\n\n\n\n")
     # End Voting
     clientsocket.send(bytes("E", 'utf-8'))
     print("End of Voting.\n\n\n")

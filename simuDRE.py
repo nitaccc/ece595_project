@@ -70,7 +70,7 @@ if __name__ == '__main__':
         
         # receive ballot, send first half of the receipt
         # then receive decision, send rest of the receipt
-        t, m, s, s1, n, n1, receipt = DRE_receipt(connection, count, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s, n)
+        t, m, s, s1, n, n1, receipt, last_receipt = DRE_receipt(connection, count, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s, n)
         tmp = printReceipt(receipt, question_len)
         print(tmp, "is generated.")
 
@@ -80,14 +80,17 @@ if __name__ == '__main__':
             block_success = blockchain.add_block(receipt, tmp, n1, g1, q, n, s, c)
             if not block_success:
                 print("Receipt failed blockchain verification. Not added to chain. \n")
+                connection.send(pickle.dumps(["E"]))
             else:
                 print(f"Blockchain is valid: {blockchain.is_chain_valid()} \n")
+                connection.send(pickle.dumps(last_receipt))
         else:
             # confirm
             # creates a block and mines it in the block-chain
             block_success = blockchain.add_block(receipt, tmp, n1, g1, q, n, s, c)
             if not block_success:
                 print("Receipt failed blockchain verification. Not added to chain. \n")
+                connection.send(pickle.dumps(["E"]))
             else:
                 print(f"Blockchain is valid: {blockchain.is_chain_valid()} \n")
                 # update Merkle Tree -> prevent double voting
@@ -95,6 +98,7 @@ if __name__ == '__main__':
                 studentID = ''.join(secrets.choice(string.digits) for i in range(10))
                 hash_list[idx] = gen_voterHash(studentID, False)
                 mtree = construct_MerkleTree(hash_list)
+                connection.send(pickle.dumps(last_receipt))
     print("End of Voting.\n\n\n")
 
 

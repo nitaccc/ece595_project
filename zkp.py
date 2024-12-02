@@ -145,11 +145,12 @@ def DRE_receipt(connection, i, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s
         decision = tmp.decode()
         # audit receipt: (i : (Ui, Vi, Ei, Wi, Pwf{Ei}, PK{s1}), (audited, ri, vi)
         # confirm receipt: (i : (Ui, Vi, Ei, Wi, PWF{Ei}, PK{s1}), (confirmed, PK{s})
+        
         if decision == "n":
             merge_r["status"] = "audit"
             merge_r["ballot"] = all_vi
             merge_r["ri"] = all_ri
-            connection.send(pickle.dumps(["audit", all_vi, all_ri]))
+            last_receipt = ["audit", all_vi, all_ri]
             break
         elif decision == "y":
             merge_r["status"] = "confirm"
@@ -162,6 +163,6 @@ def DRE_receipt(connection, i, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s
                 n[i] = n[i] * merge_r['Ui'][i] % q[i]
                 Pk_s.append(genProof_s1(n[i], g1[i], s[i], q[i]))
             merge_r["Pk_s"] = Pk_s
-            connection.send(pickle.dumps(["confirm", Pk_s]))
+            last_receipt = ["confirm", Pk_s]
             break
-    return t, m, s, s1, n, n1, merge_r
+    return t, m, s, s1, n, n1, merge_r, last_receipt
