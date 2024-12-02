@@ -84,17 +84,17 @@ if __name__ == '__main__':
                 print(f"Blockchain is valid: {blockchain.is_chain_valid()} \n")
         else:
             # confirm
-            # update Merkle Tree -> prevent double voting
-            idx = hash_list.index(verifyID.hex())
-            studentID = ''.join(secrets.choice(string.digits) for i in range(10))
-            hash_list[idx] = gen_voterHash(studentID, False)
-            mtree = construct_MerkleTree(hash_list)
             # creates a block and mines it in the block-chain
             block_success = blockchain.add_block(receipt, tmp, n1, g1, q, n, s, c)
             if not block_success:
                 print("Receipt failed blockchain verification. Not added to chain. \n")
             else:
                 print(f"Blockchain is valid: {blockchain.is_chain_valid()} \n")
+                # update Merkle Tree -> prevent double voting
+                idx = hash_list.index(verifyID.hex())
+                studentID = ''.join(secrets.choice(string.digits) for i in range(10))
+                hash_list[idx] = gen_voterHash(studentID, False)
+                mtree = construct_MerkleTree(hash_list)
     print("End of Voting.\n\n\n")
 
 
