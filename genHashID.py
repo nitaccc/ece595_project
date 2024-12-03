@@ -10,7 +10,7 @@ import secrets
 
 
 
-def gen_voterHash(ID, genFile = True):
+def gen_voterHash(ID, genFile = True, returnPassword = False):
     alphabet = string.ascii_letters + string.digits
     nullifier_internal = ''.join(secrets.choice(alphabet) for i in range(22))
     ID32 = bytes(ID + nullifier_internal, 'utf-8')
@@ -23,6 +23,7 @@ def gen_voterHash(ID, genFile = True):
         f.write("\nSecret key: " + nullifier_internal)
         f.close()
 
+    if returnPassword: return hashlib.sha256(ID32).hexdigest(), nullifier_internal
     return hashlib.sha256(ID32).hexdigest()
 
 

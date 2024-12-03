@@ -27,21 +27,11 @@ if __name__ == '__main__':
     clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     clientsocket.connect(('localhost', 8070))
 
-    # Registration
-    # maximun voter is 32 since the number of student does not exceed 32
-    studentID_hashList = []
-    for i in range(32):
-        studentID = ''.join(secrets.choice(string.digits) for i in range(10))
-        studentID_hashList.append(gen_voterHash(studentID, False))
-
-    count = 0
-    while count < 32:
+    while True:
         studentID = input("Please enter your 10 digits student ID or enter E to end registration: ")
         if len(studentID) == 10:
             hash_value = gen_voterHash(studentID)
-            studentID_hashList[count] = hash_value
             clientsocket.send(pickle.dumps([hash_value]))
-            count += 1
         if studentID == "E":
             clientsocket.send(pickle.dumps(["E"]))
             break

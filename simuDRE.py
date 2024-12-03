@@ -28,6 +28,12 @@ if __name__ == '__main__':
                 break
             hash_list.append(data[0])
             print("Registered!")
+    tmp = 1
+    while tmp < len(hash_list):
+        tmp = tmp * 2
+    while len(hash_list) < tmp:
+        tmpID = ''.join(secrets.choice(string.digits) for i in range(10))
+        hash_list.append(gen_voterHash(tmpID, False))
     mtree = construct_MerkleTree(hash_list)
     print("End of Registration. \n\n\n")
     connection.send('E'.encode(encoding='utf-8'))
