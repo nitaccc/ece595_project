@@ -5,6 +5,7 @@ import secrets
 import hashlib
 from genHashID import gen_voterHash
 from verify import verifyPWF, auditVerify
+from blockChain import Blockchain
 from util import printReceipt, readReceipt
 
 
@@ -25,7 +26,7 @@ def mergeReceipt(r1, r2):
 
 if __name__ == '__main__':
     clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    clientsocket.connect(('localhost', 8070))
+    clientsocket.connect(('localhost', 8080))
 
     while True:
         studentID = input("Please enter your 10 digits student ID or enter E to end registration: ")
@@ -117,7 +118,13 @@ if __name__ == '__main__':
         if len(tmp) > 0:
             publicKey = pickle.loads(tmp)
             break
+    while True:
+        tmp = clientsocket.recv(65507)
+        if len(tmp) > 0:
+            blockchain = pickle.loads(tmp)
+            break
     clientsocket.send(pickle.dumps(question_set))
+
     print("c:", publicKey["c"])
     print("d:", publicKey["d"])
     print("h:", publicKey["h"])
@@ -133,32 +140,36 @@ if __name__ == '__main__':
     Ui_tally = [1 for _ in range(len(question_set))]
     n1_tally = [1 for _ in range(len(question_set))]
 
-    for filename in receipt_name:
-
-        receipt = readReceipt(filename)
+    for block in blockchain.chain:
+        
+        if block.receipt == "Genesis Block":
+            continue
+        
+        block_receipt = block.receipt
+        block_receipt_file = block.file
 
         for i in range(len(question_set)):
-            n1_tally[i] = n1_tally[i] * receipt["Ui"][i] % publicKey['q'][i]
+            n1_tally[i] = n1_tally[i] * block_receipt["Ui"][i] % publicKey['q'][i]
 
-        if not verifyPWF(filename):
+        # Public verifies PWF
+        if not verifyPWF(block_receipt_file):
             print("There has been an error in the vote while verifying PWFs. Insecure!")
             exit()
-        
-        if receipt['status'] == "audit":
-            if not auditVerify(filename, n1_tally):
-                print("There has been an error in an audited ballot. Insecure!")
+
+        # Public verifies vi and ri for audited ballots
+        if block_receipt["status"] != "confirm":
+            if not auditVerify(block_receipt_file, n1_tally):
+                print("There has been an error in fan audited ballot. Insecure!")
                 exit()
-        else: 
+        else:
             for i in range(len(question_set)):
-                Ui_tally[i] = (Ui_tally[i] * receipt["Ui"][i]) % publicKey['q'][i]
-                Vi_tally[i] = (Vi_tally[i] * receipt["Vi"][i]) % publicKey['q'][i]
-                Wi_tally[i] = (Wi_tally[i] * receipt["Wi"][i]) % publicKey['q'][i]
-                Ei_matrix = receipt["Ei"][i]
-                # multiply matrices element-wise modulo q
+                Ui_tally[i] = (Ui_tally[i] * block_receipt["Ui"][i]) % publicKey['q'][i]
+                Vi_tally[i] = (Vi_tally[i] * block_receipt["Vi"][i]) % publicKey['q'][i]
+                Wi_tally[i] = (Wi_tally[i] * block_receipt["Wi"][i]) % publicKey['q'][i]
+                Ei_matrix = block_receipt["Ei"][i]
                 for k in range(len(Ei_matrix)):
                     for j in range(len(Ei_matrix[k])):
                         Ei_tally[i][k][j] = (Ei_tally[i][k][j] * Ei_matrix[k][j]) % publicKey['q'][i]
-
     
     # Public verifies the tally equations
     for i in range(len(question_set)):

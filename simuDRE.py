@@ -14,7 +14,7 @@ NUM_CANDIDATES = 5
 
 if __name__ == '__main__':
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serversocket.bind(('localhost', 8070))
+    serversocket.bind(('localhost', 8080))
     serversocket.listen(5)
     connection, address = serversocket.accept()
 
@@ -115,6 +115,7 @@ if __name__ == '__main__':
     print("m:", m, "\n")
     publicKey = {"c": c, "d": d, "h": h, "q": q, "g1": g1, "g2": g2, "t": t, "s": s, "m": m}
     connection.send(pickle.dumps(publicKey))
+    connection.send(pickle.dumps(blockchain))
     while True:
         tmp = connection.recv(512)
         if len(tmp) > 0:
@@ -155,7 +156,7 @@ if __name__ == '__main__':
 
         # Public verifies vi and ri for audited ballots
         if block_receipt["status"] != "confirm":
-            if not auditVerify(block_receipt_file, n1_tally): # TODO how do we get n1
+            if not auditVerify(block_receipt_file, n1_tally):
                 print("There has been an error in fan audited ballot. Insecure!")
                 exit()
         else:

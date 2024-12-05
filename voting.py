@@ -1,6 +1,11 @@
+from collections import Counter
+import linecache
+import os
+import tracemalloc
 import string 
 import secrets
 import hashlib
+import time
 from random import randint
 from random import random
 from genHashID import gen_voterHash
@@ -11,15 +16,9 @@ from verify import verifyPWF, auditVerify
 from blockChain import Blockchain
 from util import printReceipt, mergeReceipt
 
-from memory_profiler import profile
-
 NUM_CANDIDATES = 5
-NUM_STUDENT = 5
-ACCEPT_RATE = 0.8
 
-@profile
-
-def DRE_receipt(i, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
+def DRE_receipt(i, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s, n, ACCEPT_RATE):
     merge_r = {"id": i, "Ui": [], "Vi": [], "Ei": [], "Wi": [], "Pwf": [], "Pk_s1": []}
     all_vi = []
     all_ri = []
@@ -49,7 +48,7 @@ def DRE_receipt(i, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
         all_alpha.append(alpha)
     
     while True:
-        decision = 1 if random() < ACCEPT_RATE else 0
+        decision = 1 if i <= ACCEPT_RATE else 0
         # audit receipt: (i : (Ui, Vi, Ei, Wi, Pwf{Ei}, PK{s1}), (audited, ri, vi)
         # confirm receipt: (i : (Ui, Vi, Ei, Wi, PWF{Ei}, PK{s1}), (confirmed, PK{s})
         if decision == 0:
@@ -72,7 +71,8 @@ def DRE_receipt(i, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s, n):
             break
     return t, m, s, s1, n, n1, merge_r, last_receipt
 
-def voting():
+def voting(NUM_STUDENT, ACCEPT_RATE):
+    tracemalloc.start()
     # Registration
     studentID_list = []
     studentPassword_list = []
@@ -93,7 +93,7 @@ def voting():
         studenthash_list.append(gen_voterHash(tmpID, False))
 
     mtree = construct_MerkleTree(studenthash_list)
-    print("End of Registration. \n\n\n")
+    # print("End of Registration. \n\n\n")
     # Finish Registration
         
     # Initialize
@@ -108,7 +108,7 @@ def voting():
     n1 = [1 for _ in range(question_len)]
     count = 0
     blockchain = Blockchain()
-    print("Start Voting...")
+    # print("Start Voting...")
     
     # Voting
     for student_idx in range(NUM_STUDENT):
@@ -119,13 +119,14 @@ def voting():
         check = verify_hash(mtree, verifyID.hex())
         if not check: continue
         count += 1
-        print("Verified.")
+        # print("Verified.")
         
         # receive ballot, send first half of the receipt
         # then receive decision, send rest of the receipt
-        t, m, s, s1, n, n1, receipt, last_receipt = DRE_receipt(count, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s, n)
-        tmp = printReceipt(receipt, question_len)
-        print(tmp, "is generated.")
+        t, m, s, s1, n, n1, receipt, last_receipt = DRE_receipt(count, question_len, c, d, h, q, g1, g2, s1, n1, t, m, s, n, ACCEPT_RATE)
+        # tmp = printReceipt(receipt, question_len)
+        tmp = "Receipt" + str(receipt["id"]) + ".txt"
+        # print(tmp, "is generated.")
 
         if receipt["status"] != "confirm":
             # audit
@@ -133,8 +134,8 @@ def voting():
             block_success = blockchain.add_block(receipt, tmp, n1, g1, q, n, s, c)
             if not block_success:
                 print("Receipt failed blockchain verification. Not added to chain. \n")
-            else:
-                print(f"Blockchain is valid: {blockchain.is_chain_valid()} \n")
+            # else:
+                # print(f"Blockchain is valid: {blockchain.is_chain_valid()} \n")
         else:
             # confirm
             # creates a block and mines it in the block-chain
@@ -142,30 +143,33 @@ def voting():
             if not block_success:
                 print("Receipt failed blockchain verification. Not added to chain. \n")
             else:
-                print(f"Blockchain is valid: {blockchain.is_chain_valid()} \n")
+                # print(f"Blockchain is valid: {blockchain.is_chain_valid()} \n")
                 # update Merkle Tree -> prevent double voting
                 idx = studenthash_list.index(verifyID.hex())
                 studentID = ''.join(secrets.choice(string.digits) for i in range(10))
                 studenthash_list[idx] = gen_voterHash(studentID, False)
                 mtree = construct_MerkleTree(studenthash_list)
-    print("End of Voting.\n\n\n")
+    # print("End of Voting.\n\n\n")
 
 
     # Tally
-    print("\nTally:")
-    print("t:", t)
-    print("s:", s)
-    print("m:", m, "\n")
-    publicKey = {"c": c, "d": d, "h": h, "q": q, "g1": g1, "g2": g2, "t": t, "s": s, "m": m}
-    question = ["You learn a lot from this course. ", "You prefer take this course in person. "]
-    for i in range(2):
-        print("Question: ", question[i])
-        print("Strongly Agree: " + str(sum(t[i][4])))
-        print("Slightly Agree: " + str(sum(t[i][3])))
-        print("Neutral: " + str(sum(t[i][2])))
-        print("Slightly Disagree: " + str(sum(t[i][1])))
-        print("Strongly Disagree: " + str(sum(t[i][0])))
-        print("\n")
+    # print("\nTally:")
+    # print("t:", t)
+    # print("s:", s)
+    # print("m:", m, "\n")
+    # publicKey = {"c": c, "d": d, "h": h, "q": q, "g1": g1, "g2": g2, "t": t, "s": s, "m": m}
+    # question = ["You learn a lot from this course. ", "You prefer take this course in person. "]
+    # for i in range(2):
+    #     print("Question: ", question[i])
+    #     print("Strongly Agree: " + str(sum(t[i][4])))
+    #     print("Slightly Agree: " + str(sum(t[i][3])))
+    #     print("Neutral: " + str(sum(t[i][2])))
+    #     print("Slightly Disagree: " + str(sum(t[i][1])))
+    #     print("Strongly Disagree: " + str(sum(t[i][0])))
+    #     print("\n")
+                
+    
+    start_time = time.time()
 
 
     # Verify tally w/ blockchain
@@ -187,13 +191,13 @@ def voting():
             n1_tally[i] = n1_tally[i] * block_receipt["Ui"][i] % q[i]
 
         # Public verifies PWF
-        if not verifyPWF(block_receipt_file):
+        if not verifyPWF(block_receipt_file, block_receipt):
             print("There has been an error in the vote while verifying PWFs. Insecure!")
             exit()
 
         # Public verifies vi and ri for audited ballots
         if block_receipt["status"] != "confirm":
-            if not auditVerify(block_receipt_file, n1_tally): # TODO how do we get n1
+            if not auditVerify(block_receipt_file, n1_tally, block_receipt):
                 print("There has been an error in fan audited ballot. Insecure!")
                 exit()
         else:
@@ -226,7 +230,52 @@ def voting():
                 if Ei_tally[i][k][j] != expected_Ei_tally[k][j]:
                   print(f"There has been an error in the vote tallying of Ei[{k}][{j}]. Insecure!")
                   exit()
-    print("All tally verifications have passed! Course evaluation complete and secure!")
+    print("All tally verifications have passed! Course evaluation complete and secure!\n")
+    
+    snapshot = tracemalloc.take_snapshot()
+    tracemalloc.stop()
+    total_time = time.time() - start_time
+    return total_time, snapshot
+
+
+
+def display_top(snapshot, key_type='lineno', limit=3):
+    snapshot = snapshot.filter_traces((
+        tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+        tracemalloc.Filter(False, "<unknown>"),
+    ))
+    top_stats = snapshot.statistics(key_type)
+    total = sum(stat.size for stat in top_stats)
+    print("Total allocated size: %.1f KiB\n\n" % (total / 1024))
+
+    return total / 1024
+
+
 
 if __name__ == '__main__':
-    voting()
+    NUM_STUDENT = 5
+    ACCEPT_RATE = [0, 0.2, 0.4, 0.6, 0.8, 1]
+    iter = 5
+    tally_time = [0, 0, 0, 0, 0, 0]
+    runtime = [0, 0, 0, 0, 0, 0]
+    mem = [0, 0, 0, 0, 0, 0]
+    for j in range(iter):
+        for i in range(len(ACCEPT_RATE)):
+            start_time = time.time()
+            tally_t, snapshot = voting(NUM_STUDENT, ACCEPT_RATE[i]*NUM_STUDENT)
+            total_time = time.time() - start_time
+            print("Total Voters:", NUM_STUDENT)
+            print("Confirmed Rate:", ACCEPT_RATE[i])
+            print("Total running time: %.1f s" % total_time)
+            print("Total tally time: %.1f s" % tally_t)
+            memory = display_top(snapshot)
+            runtime[i] += total_time
+            tally_time[i] += tally_t
+            mem[i] += memory
+    
+    for i in range(len(ACCEPT_RATE)):
+        print("Total Voters:", NUM_STUDENT)
+        print("Confirmed Rate:", ACCEPT_RATE[i])
+        print("Average running time: %.1f s" % (runtime[i]/iter))
+        print("Average running time of tally: %.1f s" % (tally_time[i]/iter))
+        print("Average allocated size: %.1f KiB\n\n" % (mem[i]/iter))

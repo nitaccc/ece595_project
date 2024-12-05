@@ -37,7 +37,7 @@ class Blockchain:
     def add_block(self, receipt, filename, n1, g1, q, n, s, c):
         # verify all the zero knowledge proofs in a receipt
         # Pwf EI
-        if not verifyPWF(filename):
+        if not verifyPWF(filename, receipt):
             print("PWF failed in blockchain.")
             return False
         # Pk s1
@@ -51,7 +51,7 @@ class Blockchain:
 
         if receipt["status"] != "confirm":
             # verify ri and vi for audited ballot
-            if not auditVerify(filename, n1):
+            if not auditVerify(filename, n1, receipt):
                 print("Audit verification failed in blockchain.")
                 return False
         else: 

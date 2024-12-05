@@ -36,8 +36,9 @@ def verifySingleProof(v1, tu1, g1, u, c, q):
         return False
 
     
-def verifyPWF(filename):
-    receipt = readReceipt(filename)
+def verifyPWF(filename, receipt = None):
+    if receipt is None:
+        receipt = readReceipt(filename)
     c, d, h, q, g1, g2 = readPublicKey()
 
     for i in range(len(c)):
@@ -81,11 +82,11 @@ def verifyPWF(filename):
 
 
 
-def auditVerify(filename, n1):
-    receipt = readReceipt(filename)
+def auditVerify(filename, n1, receipt = None):
+    if receipt is None:
+        receipt = readReceipt(filename)
     c, d, h, q, g1, g2 = readPublicKey()
     if receipt["status"] == "confirm":
-        print("This is not audit ballot.")
         return False
     
     for i in range(len(c)):
@@ -110,7 +111,7 @@ def auditVerify(filename, n1):
         if pow(c[i], ri, q[i]) * pow(d[i], (ri*alpha), q[i]) % q[i] != receipt["Wi"][i]:
             return False
 
-        if not verifyPWF(filename):
+        if not verifyPWF(filename, receipt):
             return False
         
         # obtain hash c
@@ -118,7 +119,6 @@ def auditVerify(filename, n1):
         hash_c = hashlib.sha256(tmp.encode("utf-8")).hexdigest()
         hash_c = int(hash_c, 16)    
         if not verifySingleProof(receipt["Pk_s1"][i][1], receipt["Pk_s1"][i][0], g1[i], n1[i], hash_c, q[i]):
-            print("Pk")
             return False
     
     return True
